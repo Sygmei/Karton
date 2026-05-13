@@ -8,6 +8,7 @@ import { isAppError } from './app-error';
 const TRACER_NAME = 'mtg-meta-analyzer';
 const DEFAULT_SERVICE_NAME = 'mtg-meta-analyzer-web';
 const DEFAULT_SERVICE_VERSION = '0.1.0';
+const DEFAULT_DEPLOYMENT_ENVIRONMENT = 'production';
 const DEFAULT_OTLP_HTTP_TRACES_URL = 'http://127.0.0.1:4318/v1/traces';
 
 type PrimitiveAttribute = string | number | boolean;
@@ -28,14 +29,29 @@ export function initOpenTelemetry(): void {
 
   const tracesUrl = resolveTracesUrl();
   const serviceName = process.env.OTEL_SERVICE_NAME?.trim() || DEFAULT_SERVICE_NAME;
-  const serviceVersion = process.env.npm_package_version?.trim() || DEFAULT_SERVICE_VERSION;
+  const serviceVersion =
+    process.env.OTEL_SERVICE_VERSION?.trim() ||
+    process.env.npm_package_version?.trim() ||
+    DEFAULT_SERVICE_VERSION;
+  const deploymentEnvironment =
+    process.env.OTEL_DEPLOYMENT_ENVIRONMENT?.trim() || DEFAULT_DEPLOYMENT_ENVIRONMENT;
+  const resourceAttributes = {
+    ...parseResourceAttributes(process.env.OTEL_RESOURCE_ATTRIBUTES),
+    'service.name': serviceName,
+    'service.version': serviceVersion,
+    'deployment.environment': deploymentEnvironment
+  };
 
   provider = new NodeTracerProvider({
-    resource: resourceFromAttributes({
-      'service.name': serviceName,
-      'service.version': serviceVersion
-    }),
-    spanProcessors: [new BatchSpanProcessor(new OTLPTraceExporter({ url: tracesUrl }))]
+    resource: resourceFromAttributes(resourceAttributes),
+    spanProcessors: [
+      new BatchSpanProcessor(
+        new OTLPTraceExporter({
+          url: tracesUrl,
+          headers: parseKeyValuePairs(process.env.OTEL_EXPORTER_OTLP_HEADERS)
+        })
+      )
+    ]
   });
   provider.register();
 
@@ -51,7 +67,9 @@ export function initOpenTelemetry(): void {
   process.once('SIGTERM', shutdown);
   process.once('SIGINT', shutdown);
 
-  console.info(`[otel] initialized exporter=${tracesUrl} service=${serviceName}`);
+  console.info(
+    `[otel] initialized exporter=${tracesUrl} service=${serviceName} version=${serviceVersion} env=${deploymentEnvironment}`
+  );
 }
 
 export async function withSpan<T>(
@@ -132,4 +150,35 @@ function resolveTracesUrl(): string {
   }
 
   return DEFAULT_OTLP_HTTP_TRACES_URL;
+}
+
+function parseResourceAttributes(raw: string | undefined): Record<string, PrimitiveAttribute> {
+  return parseKeyValuePairs(raw);
+}
+
+function parseKeyValuePairs(raw: string | undefined): Record<string, string> {
+  const pairs: Record<string, string> = {};
+  const source = String(raw || '').trim();
+  if (!source) {
+    return pairs;
+  }
+
+  for (const item of source.split(',')) {
+    const entry = item.trim();
+    if (!entry) {
+      continue;
+    }
+    const separatorIndex = entry.indexOf('=');
+    if (separatorIndex <= 0) {
+      continue;
+    }
+    const key = entry.slice(0, separatorIndex).trim();
+    const value = entry.slice(separatorIndex + 1).trim();
+    if (!key || !value) {
+      continue;
+    }
+    pairs[key] = value;
+  }
+
+  return pairs;
 }

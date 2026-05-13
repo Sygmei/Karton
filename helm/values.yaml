@@ -6,10 +6,16 @@ ingress:
 otel:
   enabled: true
   serviceName: "mtg-meta-analyzer-web"
+  serviceVersion: ""
+  deploymentEnvironment: "production"
   # Base OTLP HTTP endpoint (for example: "http://alloy.observability.svc.cluster.local:4318")
   endpoint: "http://alloy.observability.svc.cluster.local:4318"
   # Optional explicit traces endpoint. Leave empty to use endpoint + /v1/traces.
   tracesEndpoint: ""
+  # Optional OTLP headers, serialized as key=value pairs separated by commas.
+  headers: ""
+  # Optional extra resource attributes, serialized as key=value pairs separated by commas.
+  resourceAttributes: ""
 faro:
   enabled: false
   endpoint: "https://faro.obencorp.dev/collect"
