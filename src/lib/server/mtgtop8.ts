@@ -26,6 +26,8 @@ const META_HTTP_EQUIV_CHARSET_PATTERN =
 const SCRYFALL_NAMED_FUZZY_URL = 'https://api.scryfall.com/cards/named';
 const SCRYFALL_TIMEOUT_MS = 8_000;
 const DEFAULT_DECK_FETCH_CONCURRENCY = 3;
+const MTGTOP8_REQUEST_ATTEMPTS = 3;
+const MTGTOP8_RETRY_BASE_DELAY_MS = 750;
 const scryfallNameCache = new Map<string, string>();
 
 interface PageRequest {
@@ -63,6 +65,23 @@ function normalizeDeckFetchConcurrency(value: number | undefined): number {
     return DEFAULT_DECK_FETCH_CONCURRENCY;
   }
   return Math.max(1, Math.min(12, Math.trunc(Number(value))));
+}
+
+function isAbortError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    (error as { name?: unknown }).name === 'AbortError'
+  );
+}
+
+function isRetriableFetchError(error: unknown): boolean {
+  if (error instanceof AppError) {
+    return error.httpStatusCode === 502 || error.httpStatusCode === 503 || error.httpStatusCode === 504;
+  }
+
+  return isAbortError(error) || error instanceof TypeError;
 }
 
 export class MtgTop8Client {
@@ -548,20 +567,58 @@ export class MtgTop8Client {
   }
 
   private async get(url: string): Promise<string> {
+    return await this.fetchHtmlWithRetries({ method: 'GET', url });
+  }
+
+  private async post(url: string, data: Record<string, string> = {}): Promise<string> {
+    return await this.fetchHtmlWithRetries({ method: 'POST', url, data });
+  }
+
+  private async fetchHtmlWithRetries(request: PageRequest): Promise<string> {
+    let lastError: unknown = null;
+
+    for (let attempt = 1; attempt <= MTGTOP8_REQUEST_ATTEMPTS; attempt += 1) {
+      try {
+        return await this.fetchHtmlOnce(request);
+      } catch (error) {
+        lastError = error;
+        if (!isRetriableFetchError(error) || attempt >= MTGTOP8_REQUEST_ATTEMPTS) {
+          throw this.toMtgTop8RequestError(request, error);
+        }
+
+        await sleep(MTGTOP8_RETRY_BASE_DELAY_MS * attempt);
+      }
+    }
+
+    throw this.toMtgTop8RequestError(request, lastError);
+  }
+
+  private async fetchHtmlOnce(request: PageRequest): Promise<string> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    const body = request.method === 'POST' ? new URLSearchParams(request.data || {}).toString() : undefined;
 
     try {
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: this.headers,
+      const response = await fetch(request.url, {
+        method: request.method,
+        headers:
+          request.method === 'POST'
+            ? {
+                ...this.headers,
+                'content-type': 'application/x-www-form-urlencoded'
+              }
+            : this.headers,
+        body,
         signal: controller.signal
       });
       if (!response.ok) {
         throw new AppError({
           userFacingError: 'MtgTop8 is temporarily unavailable. Please retry in a few minutes.',
-          adminFacingError: `MtgTop8 GET failed status=${response.status} url=${url}`,
-          errorTypeName: 'MtgTop8GetFailedError',
+          adminFacingError:
+            request.method === 'POST'
+              ? `MtgTop8 POST failed status=${response.status} url=${request.url} body=${body || ''}`
+              : `MtgTop8 GET failed status=${response.status} url=${request.url}`,
+          errorTypeName: request.method === 'POST' ? 'MtgTop8PostFailedError' : 'MtgTop8GetFailedError',
           httpStatusCode: 502
         });
       }
@@ -571,33 +628,25 @@ export class MtgTop8Client {
     }
   }
 
-  private async post(url: string, data: Record<string, string> = {}): Promise<string> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
-
-    try {
-      const body = new URLSearchParams(data).toString();
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          ...this.headers,
-          'content-type': 'application/x-www-form-urlencoded'
-        },
-        body,
-        signal: controller.signal
-      });
-      if (!response.ok) {
-        throw new AppError({
-          userFacingError: 'MtgTop8 is temporarily unavailable. Please retry in a few minutes.',
-          adminFacingError: `MtgTop8 POST failed status=${response.status} url=${url} body=${body}`,
-          errorTypeName: 'MtgTop8PostFailedError',
-          httpStatusCode: 502
-        });
-      }
-      return await this.readHtmlResponse(response);
-    } finally {
-      clearTimeout(timer);
+  private toMtgTop8RequestError(request: PageRequest, error: unknown): AppError {
+    if (error instanceof AppError) {
+      return error;
     }
+
+    const body = request.method === 'POST' ? new URLSearchParams(request.data || {}).toString() : '';
+    const isTimeout = isAbortError(error);
+    return new AppError({
+      userFacingError: isTimeout
+        ? 'MtgTop8 took too long to respond. Please retry in a few minutes.'
+        : 'MtgTop8 is temporarily unavailable. Please retry in a few minutes.',
+      adminFacingError:
+        request.method === 'POST'
+          ? `MtgTop8 POST ${isTimeout ? 'timed out' : 'request failed'} url=${request.url} body=${body}`
+          : `MtgTop8 GET ${isTimeout ? 'timed out' : 'request failed'} url=${request.url}`,
+      errorTypeName: isTimeout ? 'MtgTop8RequestTimeoutError' : 'MtgTop8RequestFailedError',
+      httpStatusCode: isTimeout ? 504 : 502,
+      cause: error
+    });
   }
 
   private async readHtmlResponse(response: Response): Promise<string> {

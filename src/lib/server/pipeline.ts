@@ -1,15 +1,16 @@
 import { analyzeCards } from './analysis';
+import { isAppError } from './app-error';
 import { fetchInputDeckFromUrl } from './deck-source';
 import { getDuelCommanderDeckBannedCardsNormalized } from './duel-commander-banlist';
 import {
   getLatestCachedEventDate,
   insertDecksForCommander,
-  loadDecksForCommander,
+  loadDecksForCommanderFromWrite,
   upsertCommanderCache
 } from './mtgtop8-cache-repo';
 import { MtgTop8Client, type CrawlProgressEvent } from './mtgtop8';
 import { withSpan } from './otel';
-import type { AnalyzeOutput } from './types';
+import type { AnalyzeOutput, DeckRecord } from './types';
 import { formatDate, slugify } from './utils';
 
 interface AnalyzePipelineInput {
@@ -103,27 +104,43 @@ export async function analyzeFromDeckUrl(input: AnalyzePipelineInput): Promise<A
         message: 'Fetching MtgTop8 decks...',
         percentHint: 20
       });
-      const newDeckRows = await withSpan(
-        'mtgtop8.crawl_decks',
-        { 'commander.slug': commanderSlug, 'mtgtop8.max_pages': input.maxPages ?? 0 },
-        () =>
-          mtgtop8.crawlCommanderDecks(commanderEntry.url, {
-            maxPages: input.maxPages,
-            delaySeconds: input.delaySeconds,
-            deckFetchConcurrency,
-            newerThan: latestCachedEventDate,
-            onProgress: (event) => {
-              const percentHint = computeMtgTop8PercentHint(event);
-              const message = formatMtgTop8Message(event);
-              input.onProgress?.({
-                stage: 'mtgtop8',
-                message,
-                percentHint,
-                mtgtop8: event
-              });
-            }
-          })
-      );
+      let newDeckRows: DeckRecord[] = [];
+      try {
+        newDeckRows = await withSpan(
+          'mtgtop8.crawl_decks',
+          { 'commander.slug': commanderSlug, 'mtgtop8.max_pages': input.maxPages ?? 0 },
+          () =>
+            mtgtop8.crawlCommanderDecks(commanderEntry.url, {
+              maxPages: input.maxPages,
+              delaySeconds: input.delaySeconds,
+              deckFetchConcurrency,
+              newerThan: latestCachedEventDate,
+              onProgress: (event) => {
+                const percentHint = computeMtgTop8PercentHint(event);
+                const message = formatMtgTop8Message(event);
+                input.onProgress?.({
+                  stage: 'mtgtop8',
+                  message,
+                  percentHint,
+                  mtgtop8: event
+                });
+              }
+            })
+        );
+      } catch (error) {
+        if (!latestCachedEventDate || !isAppError(error) || error.httpStatusCode < 500) {
+          throw error;
+        }
+
+        console.warn(
+          `[analysis] MtgTop8 refresh failed for commander=${commanderSlug}; using cached decks through ${formatDate(latestCachedEventDate)}. error_type=${error.errorTypeName} admin_error=${error.adminFacingError}`
+        );
+        input.onProgress?.({
+          stage: 'mtgtop8',
+          message: 'MtgTop8 refresh timed out; using cached decklists...',
+          percentHint: 90
+        });
+      }
 
       input.onProgress?.({
         stage: 'analysis',
@@ -134,7 +151,7 @@ export async function analyzeFromDeckUrl(input: AnalyzePipelineInput): Promise<A
         insertDecksForCommander(commanderSlug, newDeckRows)
       );
       const cachedDecks = await withSpan('db.load_cached_decks', { 'commander.slug': commanderSlug }, () =>
-        loadDecksForCommander(commanderSlug)
+        loadDecksForCommanderFromWrite(commanderSlug)
       );
       const bannedCardsNormalized = await withSpan('banlist.load', {}, () => getDuelCommanderDeckBannedCardsNormalized());
 

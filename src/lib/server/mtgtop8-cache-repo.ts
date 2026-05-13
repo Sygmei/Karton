@@ -104,7 +104,18 @@ export async function insertDecksForCommander(
 
 export async function loadDecksForCommander(commanderSlug: string): Promise<DeckRecord[]> {
   const db = getReadDb();
+  return await loadDecksForCommanderWithDb(db, commanderSlug);
+}
 
+export async function loadDecksForCommanderFromWrite(commanderSlug: string): Promise<DeckRecord[]> {
+  const db = getWriteDb();
+  return await loadDecksForCommanderWithDb(db, commanderSlug);
+}
+
+async function loadDecksForCommanderWithDb(
+  db: ReturnType<typeof getReadDb>,
+  commanderSlug: string
+): Promise<DeckRecord[]> {
   const rows = await db
     .select({
       deckName: mtgtop8Decks.deckName,
