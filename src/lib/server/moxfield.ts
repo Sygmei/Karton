@@ -20,7 +20,7 @@ const SCRYFALL_TIMEOUT_MS = 8_000;
 const scryfallNameCache = new Map<string, string>();
 const MOXFIELD_ALLOWED_HOSTS = new Set(['moxfield.com', 'www.moxfield.com']);
 const MOXFIELD_PLAYWRIGHT_MAX_ATTEMPTS = 2;
-const MOXFIELD_EARLY_SIGNAL_TIMEOUT_MS = 7_000;
+const MOXFIELD_EARLY_SIGNAL_TIMEOUT_MS = 12_000;
 const MOXFIELD_RETRY_DELAY_MS = 800;
 const DEFAULT_S3_SCREENSHOT_PREFIX = 'traces/screenshots';
 
@@ -321,6 +321,7 @@ async function fetchMoxfieldDeckWithPlaywrightAttempt(args: {
         `card_links=${signalState.cardLinkCount}`,
         `next_data=${signalState.hasNextData}`,
         `deck_script=${signalState.hasDeckLikeScript}`,
+        `rendered_deck_text=${signalState.hasRenderedDeckText}`,
         `cloudflare_blocked=${signalState.hasCloudflareBlock}`
       ].join(' | ');
       attachPlaywrightFailureToTrace({
@@ -342,6 +343,7 @@ async function fetchMoxfieldDeckWithPlaywrightAttempt(args: {
           `card_links=${signalState.cardLinkCount}`,
           `next_data=${signalState.hasNextData}`,
           `deck_script=${signalState.hasDeckLikeScript}`,
+          `rendered_deck_text=${signalState.hasRenderedDeckText}`,
           `cloudflare_blocked=${signalState.hasCloudflareBlock}`,
           screenshot?.objectUrl ? `screenshot_object_url=${screenshot.objectUrl}` : 'screenshot_object_url=unavailable'
         ].join(' | '),
@@ -476,6 +478,7 @@ async function inspectMoxfieldPageSignals(page: any): Promise<{
   hasDeckDataSignal: boolean;
   hasNextData: boolean;
   hasDeckLikeScript: boolean;
+  hasRenderedDeckText: boolean;
   cardLinkCount: number;
   title: string;
   hasCloudflareBlock: boolean;
@@ -494,16 +497,29 @@ async function inspectMoxfieldPageSignals(page: any): Promise<{
         return /"(?:mainboard|mainBoard|boards|commanders|publicId)"\s*:/.test(text) && /"name"\s*:/.test(text);
       });
       const cardLinkCount =
-        document.querySelectorAll('article a[href^="/cards/"], main a[href^="/cards/"]').length ||
-        document.querySelectorAll('a[href^="/cards/"]').length;
+        document.querySelectorAll('article a[href*="/cards/"], main a[href*="/cards/"]').length ||
+        document.querySelectorAll('a[href*="/cards/"]').length;
       const title = document.title.trim();
       const pageText = [title, document.body?.innerText || ''].join(' ').replace(/\s+/g, ' ').trim();
       const hasCloudflareBlock = /attention required|sorry, you have been blocked|cloudflare/i.test(pageText);
+      const renderedDeckSectionCount = [
+        /\bCommander\s*\(\d+\)/i,
+        /\bCreatures\s*\(\d+\)/i,
+        /\bInstants\s*\(\d+\)/i,
+        /\bSorceries\s*\(\d+\)/i,
+        /\bArtifacts\s*\(\d+\)/i,
+        /\bEnchantments\s*\(\d+\)/i,
+        /\bLands\s*\(\d+\)/i
+      ].filter((pattern) => pattern.test(pageText)).length;
+      const hasRenderedDeckText =
+        renderedDeckSectionCount >= 2 ||
+        (/\bDeck List\b/i.test(pageText) && /\b\d+\s+main deck\b/i.test(pageText) && /\bCommander\b/i.test(pageText));
 
       return {
-        hasDeckDataSignal: hasNextData || hasDeckLikeScript || cardLinkCount > 0,
+        hasDeckDataSignal: hasNextData || hasDeckLikeScript || cardLinkCount > 0 || hasRenderedDeckText,
         hasNextData,
         hasDeckLikeScript,
+        hasRenderedDeckText,
         cardLinkCount,
         title,
         hasCloudflareBlock
@@ -513,6 +529,7 @@ async function inspectMoxfieldPageSignals(page: any): Promise<{
       hasDeckDataSignal: false,
       hasNextData: false,
       hasDeckLikeScript: false,
+      hasRenderedDeckText: false,
       cardLinkCount: 0,
       title: '',
       hasCloudflareBlock: false
@@ -703,7 +720,7 @@ async function buildCanonicalAliasMapFromHtml(html: string): Promise<Map<string,
   const $ = load(html);
   const flavorToHint = new Map<string, { display: string; hint: string }>();
 
-  $('a[href^="/cards/"]').each((_, anchor) => {
+  $('a[href*="/cards/"]').each((_, anchor) => {
     const href = String($(anchor).attr('href') || '').trim();
     const displayName = $(anchor).text().replace(/\s+/g, ' ').trim();
     const canonicalHint = extractCardNameHintFromHref(href);
@@ -982,16 +999,16 @@ function extractDeckPayloadFromHtml(html: string): Record<string, unknown> | nul
 
 function getMainboardPayload(payload: Record<string, unknown>): unknown {
   if (payload.mainboard) {
-    return payload.mainboard;
+    return extractCardsPayloadFromBoard(payload.mainboard);
   }
   if (payload.mainBoard) {
-    return payload.mainBoard;
+    return extractCardsPayloadFromBoard(payload.mainBoard);
   }
 
   const boards = payload.boards;
   if (boards && typeof boards === 'object' && !Array.isArray(boards)) {
     const map = boards as Record<string, unknown>;
-    return map.mainboard || map.mainBoard || map.main || {};
+    return extractCardsPayloadFromBoard(map.mainboard || map.mainBoard || map.main);
   }
 
   return {};
@@ -999,19 +1016,32 @@ function getMainboardPayload(payload: Record<string, unknown>): unknown {
 
 function getCommandersPayload(payload: Record<string, unknown>): unknown {
   if (payload.commanders) {
-    return payload.commanders;
+    return extractCardsPayloadFromBoard(payload.commanders);
   }
   if (payload.commander && (Array.isArray(payload.commander) || typeof payload.commander === 'object')) {
-    return payload.commander;
+    return extractCardsPayloadFromBoard(payload.commander);
   }
 
   const boards = payload.boards;
   if (boards && typeof boards === 'object' && !Array.isArray(boards)) {
     const map = boards as Record<string, unknown>;
-    return map.commanders || map.commander || map.command || {};
+    return extractCardsPayloadFromBoard(map.commanders || map.commander || map.command);
   }
 
   return {};
+}
+
+function extractCardsPayloadFromBoard(board: unknown): unknown {
+  if (!board || typeof board !== 'object' || Array.isArray(board)) {
+    return board || {};
+  }
+
+  const item = board as Record<string, unknown>;
+  if (item.cards && typeof item.cards === 'object') {
+    return item.cards;
+  }
+
+  return board;
 }
 
 function mergeDeckPayload(
@@ -1093,7 +1123,7 @@ function parseArticleDeck(
       $(ul)
         .find('li')
         .each((__, li) => {
-          const anchor = $(li).find('a[href^="/cards/"]').first();
+          const anchor = $(li).find('a[href*="/cards/"]').first();
           if (!anchor.length) {
             return;
           }
