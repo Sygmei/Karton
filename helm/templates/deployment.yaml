@@ -1,8 +1,8 @@
-{{- $name := "mtgmetaanalyzer" -}}
+{{- $name := "karton" -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: "mtgmetaanalyzer-deployment"
+  name: "karton-deployment"
 spec:
   replicas: {{ .Values.replicaCount }}
   strategy:
@@ -12,18 +12,18 @@ spec:
       maxUnavailable: 1
   selector:
     matchLabels:
-      app: "mtgmetaanalyzer"
+      app: "karton"
   template:
     metadata:
       labels:
-        app: "mtgmetaanalyzer"
+        app: "karton"
       annotations:
-        mtgmetaanalyzer/version: "{{ .Values.version }}"
-        mtgmetaanalyzer/release-revision: "{{ .Release.Revision }}"
+        karton/version: "{{ .Values.version }}"
+        karton/release-revision: "{{ .Release.Revision }}"
     spec:
       containers:
-        - name: "mtgmetaanalyzer"
-          image: "ghcr.io/sygmei/mtgmetaanalyzer:{{ .Values.version }}"
+        - name: "karton"
+          image: "ghcr.io/sygmei/karton:{{ .Values.version }}"
           imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false

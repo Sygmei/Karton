@@ -7,7 +7,7 @@ Create the database secret once in the target namespace:
 
 Port-forward the app:
 
-  kubectl port-forward svc/mtgmetaanalyzer-service 3000:3000
+  kubectl port-forward svc/karton-service 3000:3000
 
 Open:
 
