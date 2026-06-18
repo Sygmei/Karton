@@ -1,4 +1,4 @@
-import { bigserial, date, doublePrecision, index, jsonb, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { boolean, bigserial, date, doublePrecision, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 import type { AnalyzeOutput } from './types';
 
 export const mtgtop8Commanders = pgTable(
@@ -55,6 +55,7 @@ export const analysisRuns = pgTable(
     ignoreBefore: date('ignore_before', { mode: 'string' }),
     ignoreAfter: date('ignore_after', { mode: 'string' }),
     clientIp: text('client_ip').notNull().default('unknown'),
+    userId: text('user_id'),
     traceId: text('trace_id'),
     payloadJson: jsonb('payload_json').$type<AnalyzeOutput>().notNull(),
     inputJson: jsonb('input_json')
@@ -70,6 +71,7 @@ export const analysisRuns = pgTable(
   },
   (table) => ({
     shareIdUnique: uniqueIndex('analysis_runs_share_id_unique').on(table.shareId),
+    userCreatedAtIdx: index('idx_analysis_runs_user_created_at').on(table.userId, table.createdAt),
     createdAtIdx: index('idx_analysis_runs_created_at').on(table.createdAt)
   })
 );
@@ -86,5 +88,76 @@ export const duelCommanderBanlistCache = pgTable(
   },
   (table) => ({
     fetchedAtIdx: index('idx_duel_commander_banlist_cache_fetched_at').on(table.fetchedAt)
+  })
+);
+
+export const users = pgTable(
+  'users',
+  {
+    id: text('id').primaryKey(),
+    username: text('username').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    isSuperadmin: boolean('is_superadmin').notNull().default(false),
+    role: text('role').notNull().default('user'),
+    displayName: text('display_name'),
+    createdByUserId: text('created_by_user_id')
+  },
+  (table) => ({
+    usernameUnique: uniqueIndex('users_username_unique').on(table.username)
+  })
+);
+
+export const userLoginLinks = pgTable(
+  'user_login_links',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    token: text('token').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    consumedAt: timestamp('consumed_at', { withTimezone: true })
+  },
+  (table) => ({
+    tokenUnique: uniqueIndex('user_login_links_token_unique').on(table.token),
+    userIdx: index('idx_user_login_links_user_id').on(table.userId)
+  })
+);
+
+export const userSessions = pgTable(
+  'user_sessions',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    sessionToken: text('session_token').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp('expires_at', { withTimezone: true })
+  },
+  (table) => ({
+    tokenUnique: uniqueIndex('user_sessions_token_unique').on(table.sessionToken),
+    userIdx: index('idx_user_sessions_user_id').on(table.userId)
+  })
+);
+
+export const userCardLists = pgTable(
+  'user_card_lists',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    kind: text('kind').notNull(),
+    label: text('label'),
+    url: text('url').notNull(),
+    position: integer('position').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => ({
+    userKindIdx: index('idx_user_card_lists_user_kind').on(table.userId, table.kind),
+    kindIdx: index('idx_user_card_lists_kind').on(table.kind)
   })
 );

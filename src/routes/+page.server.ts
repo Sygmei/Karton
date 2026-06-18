@@ -1,8 +1,7 @@
-import { randomUUID } from 'node:crypto';
-
 import { fail } from '@sveltejs/kit';
 
-import { saveAnalysisRun } from '$lib/server/analysis-runs-repo';
+import { listAnalysisRunsForUser, saveAnalysisRun } from '$lib/server/analysis-runs-repo';
+import { userToJson } from '$lib/server/auth';
 import { normalizeSupportedDeckUrl } from '$lib/server/deck-source';
 import { isAppError } from '$lib/server/app-error';
 import { getTraceId, withSpan } from '$lib/server/otel';
@@ -10,7 +9,7 @@ import { completeProgress, failProgress, initProgress, updateProgress } from '$l
 import { analyzeFromDeckUrl } from '$lib/server/pipeline';
 import { parseDate } from '$lib/server/utils';
 
-import type { Actions } from './$types';
+import type { Actions, PageServerLoad } from './$types';
 
 const DEFAULT_VALUES = {
   moxfieldUrl: '',
@@ -21,12 +20,20 @@ const DEFAULT_VALUES = {
   addTop: '50'
 };
 
+export const load: PageServerLoad = async ({ locals }) => {
+  const previousAnalyses = locals.user ? await listAnalysisRunsForUser(locals.user.id) : [];
+  return {
+    currentUser: locals.user ? userToJson(locals.user) : null,
+    previousAnalyses
+  };
+};
+
 export const actions: Actions = {
   default: async (event) => {
     const { request } = event;
     const formData = await request.formData();
     const clientIp = resolveClientIp(event);
-    const requestTraceId = ensureTraceId(getTraceId());
+    const requestTraceId = normalizeTraceId(getTraceId());
 
     const values = {
       moxfieldUrl: String(formData.get('moxfieldUrl') || '').trim(),
@@ -47,7 +54,7 @@ export const actions: Actions = {
       }
       return fail(400, {
         error: 'Deck URL is required',
-        traceId: requestTraceId,
+        traceId: requestTraceId || undefined,
         values: { ...DEFAULT_VALUES, ...values }
       });
     }
@@ -65,7 +72,7 @@ export const actions: Actions = {
       }
       return fail(status, {
         error: userError,
-        traceId: requestTraceId,
+        traceId: requestTraceId || undefined,
         values: { ...DEFAULT_VALUES, ...values }
       });
     }
@@ -80,7 +87,7 @@ export const actions: Actions = {
       }
       return fail(400, {
         error: [keepTop, cutTop, addTop].find((item) => typeof item === 'string'),
-        traceId: requestTraceId,
+        traceId: requestTraceId || undefined,
         values: { ...DEFAULT_VALUES, ...values }
       });
     }
@@ -94,7 +101,7 @@ export const actions: Actions = {
       }
       return fail(400, {
         error: 'Invalid start date. Use YYYY-MM-DD',
-        traceId: requestTraceId,
+        traceId: requestTraceId || undefined,
         values: { ...DEFAULT_VALUES, ...values }
       });
     }
@@ -105,7 +112,7 @@ export const actions: Actions = {
       }
       return fail(400, {
         error: 'Invalid end date. Use YYYY-MM-DD',
-        traceId: requestTraceId,
+        traceId: requestTraceId || undefined,
         values: { ...DEFAULT_VALUES, ...values }
       });
     }
@@ -116,7 +123,7 @@ export const actions: Actions = {
       }
       return fail(400, {
         error: 'Start date must be before or equal to end date',
-        traceId: requestTraceId,
+        traceId: requestTraceId || undefined,
         values: { ...DEFAULT_VALUES, ...values }
       });
     }
@@ -130,8 +137,10 @@ export const actions: Actions = {
           'analysis.deck_url': normalizedMoxfieldUrl
         },
         (span) => {
-          analysisTraceId = getTraceId(span);
-          console.info(`[analysis] start trace_id=${analysisTraceId} ip=${clientIp} deckUrl=${normalizedMoxfieldUrl}`);
+          analysisTraceId = normalizeTraceId(getTraceId(span));
+          console.info(
+            `[analysis] start trace_id=${analysisTraceId || 'unavailable'} ip=${clientIp} deckUrl=${normalizedMoxfieldUrl}`
+          );
 
           return analyzeFromDeckUrl({
             deckUrl: normalizedMoxfieldUrl,
@@ -177,7 +186,8 @@ export const actions: Actions = {
           ignoreBefore: output.analysis.startDate,
           ignoreAfter: output.analysis.endDate,
           clientIp,
-          traceId: span.spanContext().traceId,
+          userId: event.locals.user?.id ?? null,
+          traceId: normalizeTraceId(span.spanContext().traceId),
           output,
           input: {
             startDate: values.startDate,
@@ -200,7 +210,7 @@ export const actions: Actions = {
         await completeProgress(progressId);
       }
       console.info(
-        `[analysis] success trace_id=${analysisTraceId} ip=${clientIp} deckUrl=${normalizedMoxfieldUrl} shareId=${shareId} totalDecks=${output.analysis.totalDecksConsidered}`
+        `[analysis] success trace_id=${analysisTraceId || 'unavailable'} ip=${clientIp} deckUrl=${normalizedMoxfieldUrl} shareId=${shareId} totalDecks=${output.analysis.totalDecksConsidered}`
       );
 
       return {
@@ -208,31 +218,33 @@ export const actions: Actions = {
         output: outputWithShare
       };
     } catch (error) {
-      const traceId = ensureTraceId(analysisTraceId === 'none' ? getTraceId() : analysisTraceId);
+      const traceId = analysisTraceId || normalizeTraceId(getTraceId());
       const appError = isAppError(error) ? error : null;
       const status = appError?.httpStatusCode ?? 500;
       const userError = appError?.userFacingError ?? null;
       const errorType = appError?.errorTypeName ?? 'UnhandledAnalysisError';
       console.error(
-        `[analysis] failed trace_id=${traceId} ip=${clientIp} deckUrl=${normalizedMoxfieldUrl || values.moxfieldUrl} status=${status} type=${errorType} admin_error=${appError?.adminFacingError || getErrorMessage(error)}`,
+        `[analysis] failed trace_id=${traceId || 'unavailable'} ip=${clientIp} deckUrl=${normalizedMoxfieldUrl || values.moxfieldUrl} status=${status} type=${errorType} admin_error=${appError?.adminFacingError || getErrorMessage(error)}`,
         error
       );
       if (progressId) {
         const progressMessage =
-          status >= 500
+          status >= 500 && traceId
             ? `Analysis failed. Trace ID: ${traceId}`
-            : `${userError || 'The request could not be completed.'} (Trace ID: ${traceId})`;
+            : traceId
+              ? `${userError || 'The request could not be completed.'} (Trace ID: ${traceId})`
+              : userError || 'The request could not be completed.';
         await failProgress(progressId, progressMessage);
       }
       if (status >= 500) {
         return fail(500, {
-          traceId,
+          traceId: traceId || undefined,
           values: { ...DEFAULT_VALUES, ...values }
         });
       }
       return fail(status, {
         error: userError || 'The request could not be completed.',
-        traceId,
+        traceId: traceId || undefined,
         values: { ...DEFAULT_VALUES, ...values }
       });
     }
@@ -247,20 +259,12 @@ function parsePositiveInt(raw: string, fieldName: string): number | string {
   return value;
 }
 
-function ensureTraceId(value: string | null | undefined): string {
+function normalizeTraceId(value: string | null | undefined): string | null {
   const candidate = String(value || '').trim();
-  if (candidate && candidate !== 'none' && !/^0+$/.test(candidate)) {
+  if (/^[0-9a-f]{32}$/.test(candidate) && !/^0+$/.test(candidate)) {
     return candidate;
   }
-  return `local-${safeRandomId()}`;
-}
-
-function safeRandomId(): string {
-  try {
-    return randomUUID();
-  } catch {
-    return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  }
+  return null;
 }
 
 function resolveClientIp(event: Parameters<Actions['default']>[0]): string {

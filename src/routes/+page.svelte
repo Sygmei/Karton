@@ -7,6 +7,21 @@
   import CardTable from "$lib/components/CardTable.svelte";
   import type { AnalysisResult } from "$lib/server/types";
 
+  export let data: {
+    currentUser?: {
+      username: string;
+      displayName?: string | null;
+    } | null;
+    previousAnalyses?: Array<{
+      shareId: string;
+      moxfieldUrl: string;
+      commanderName: string | null;
+      ignoreBefore: string | null;
+      ignoreAfter: string | null;
+      createdAt: string;
+    }>;
+  };
+
   export let form:
     | {
         error?: string;
@@ -78,6 +93,7 @@
   };
 
   $: output = form?.output;
+  $: previousAnalyses = data.previousAnalyses ?? [];
 
   let isSubmitting = false;
   let progress = 0;
@@ -619,14 +635,10 @@
 </script>
 
 <svelte:head>
-  <title>MtG Meta Analyzer</title>
+  <title>Karton</title>
 </svelte:head>
 
 <main class="stage">
-  <div class="orb orb-a"></div>
-  <div class="orb orb-b"></div>
-  <div class="grain"></div>
-
   {#if isSubmitting}
     <section class="progress-shell" aria-live="polite" aria-busy="true">
       <div class="progress-head">
@@ -652,10 +664,9 @@
 
   <section class="panel hero">
     <div class="hero-head">
-      <h1>MtG DC Meta Atelier</h1>
+      <h1>Deck Analyzer</h1>
       <p class="subtitle">
-        Analyze your deck against live Duel Commander trends from
-        MtgTop8!
+        Compare your Duel Commander list against live MtgTop8 trends.
       </p>
     </div>
 
@@ -735,6 +746,36 @@
     {/if}
   </section>
 
+  {#if data.currentUser}
+    <section class="panel previous-panel">
+      <div class="title-row">
+        <div>
+          <p class="eyebrow">Previous analyses</p>
+          <h2>Saved for {data.currentUser.displayName || data.currentUser.username}</h2>
+        </div>
+        <span class="stamp">{previousAnalyses.length} saved</span>
+      </div>
+      {#if previousAnalyses.length}
+        <div class="analysis-history">
+          {#each previousAnalyses as analysis}
+            <a href={`/analysis/${analysis.shareId}`}>
+              <strong>{analysis.commanderName || "Deck analysis"}</strong>
+              <span>{analysis.moxfieldUrl}</span>
+              <small>
+                {new Date(analysis.createdAt).toLocaleString()}
+                {#if analysis.ignoreBefore || analysis.ignoreAfter}
+                  - {analysis.ignoreBefore || "start"} to {analysis.ignoreAfter || "now"}
+                {/if}
+              </small>
+            </a>
+          {/each}
+        </div>
+      {:else}
+        <p class="empty">No saved analyses yet.</p>
+      {/if}
+    </section>
+  {/if}
+
   {#if output}
     <section class="panel info">
       <div class="title-row">
@@ -748,7 +789,7 @@
         <article>
           <p class="k">Deck</p>
           <p class="v">{output.moxfieldDeck.name}</p>
-          <p class="sub">{deckSourceLabel(output.moxfieldDeck.source)} · {output.moxfieldDeck.deckId}</p>
+          <p class="sub">{deckSourceLabel(output.moxfieldDeck.source)} - {output.moxfieldDeck.deckId}</p>
         </article>
         <article>
           <p class="k">Commander</p>
@@ -848,7 +889,7 @@
 
 <style>
   :global(body) {
-    --bg: #0b1217;
+    --bg: #0f1110;
     --ink: #eef4f8;
     --muted: #bfd0dc;
     --panel: rgba(14, 27, 35, 0.78);
@@ -860,22 +901,7 @@
     min-height: 100vh;
     color: var(--ink);
     font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
-    background: radial-gradient(
-        circle at 15% 10%,
-        rgba(43, 141, 175, 0.35),
-        transparent 42%
-      ),
-      radial-gradient(
-        circle at 80% 25%,
-        rgba(255, 164, 76, 0.3),
-        transparent 38%
-      ),
-      radial-gradient(
-        circle at 50% 90%,
-        rgba(255, 95, 95, 0.23),
-        transparent 44%
-      ),
-      var(--bg);
+    background: var(--bg);
     overflow-x: hidden;
   }
 
@@ -892,7 +918,7 @@
     position: sticky;
     top: 0.9rem;
     z-index: 18;
-    border-radius: 14px;
+    border-radius: 4px;
     border: 1px solid rgba(156, 211, 235, 0.45);
     background: rgba(7, 20, 28, 0.92);
     box-shadow: 0 14px 38px rgba(0, 0, 0, 0.32);
@@ -925,7 +951,7 @@
   .progress-track {
     margin-top: 0.48rem;
     height: 9px;
-    border-radius: 999px;
+    border-radius: 3px;
     background: rgba(115, 160, 184, 0.25);
     overflow: hidden;
   }
@@ -933,9 +959,8 @@
   .progress-fill {
     height: 100%;
     border-radius: inherit;
-    background: linear-gradient(90deg, #2cc4da, #5ce5ad, #f4b14f);
-    background-size: 220% 100%;
-    animation: sheen 1.8s linear infinite;
+    background: var(--a);
+    animation: none;
     transition: width 200ms ease;
   }
 
@@ -968,7 +993,7 @@
     width: 100%;
     height: 2px;
     margin: 0 0.38rem;
-    background: linear-gradient(90deg, rgba(79, 120, 143, 0.3), rgba(87, 136, 160, 0.22));
+    background: rgba(87, 136, 160, 0.28);
   }
 
   .metro-step.last {
@@ -987,7 +1012,7 @@
     align-items: center;
     justify-content: flex-start;
     overflow: hidden;
-    border-radius: 999px;
+    border-radius: 3px;
     border: 1px solid rgba(135, 170, 188, 0.46);
     background: rgba(15, 35, 46, 0.8);
     padding: 0;
@@ -1031,14 +1056,8 @@
     width: min(17.8rem, 62vw);
     padding-right: 0.5rem;
     border-color: rgba(126, 202, 222, 0.84);
-    background: linear-gradient(
-      120deg,
-      rgba(28, 106, 128, 0.88),
-      rgba(59, 153, 133, 0.84),
-      rgba(29, 123, 145, 0.9)
-    );
-    background-size: 180% 100%;
-    animation: metroFlow 2.8s ease-in-out infinite;
+    background: rgba(126, 202, 222, 0.84);
+    animation: none;
   }
 
   .metro-step.active .metro-number {
@@ -1053,7 +1072,7 @@
 
   .metro-step.done .metro-pill {
     border-color: rgba(138, 216, 194, 0.65);
-    background: linear-gradient(130deg, rgba(77, 182, 146, 0.82), rgba(147, 217, 194, 0.72));
+    background: rgba(77, 182, 146, 0.82);
   }
 
   .metro-step.done .metro-number {
@@ -1065,86 +1084,17 @@
   }
 
   .metro-step.done::after {
-    background: linear-gradient(90deg, rgba(96, 223, 179, 0.74), rgba(129, 231, 194, 0.68));
-  }
-
-  .orb {
-    position: fixed;
-    border-radius: 999px;
-    filter: blur(45px);
-    z-index: -3;
-    pointer-events: none;
-    animation: drift 14s ease-in-out infinite;
-  }
-
-  .orb-a {
-    width: 320px;
-    height: 320px;
-    top: -90px;
-    right: -40px;
-    background: linear-gradient(
-      145deg,
-      rgba(34, 180, 200, 0.45),
-      rgba(46, 86, 175, 0.12)
-    );
-  }
-
-  .orb-b {
-    width: 260px;
-    height: 260px;
-    bottom: 8%;
-    left: -70px;
-    background: linear-gradient(
-      145deg,
-      rgba(255, 130, 87, 0.5),
-      rgba(255, 214, 139, 0.08)
-    );
-    animation-delay: -5s;
-  }
-
-  .grain {
-    position: fixed;
-    inset: 0;
-    z-index: -2;
-    opacity: 0.12;
-    pointer-events: none;
-    background-image: radial-gradient(
-      rgba(255, 255, 255, 0.8) 0.45px,
-      transparent 0.45px
-    );
-    background-size: 4px 4px;
+    background: rgba(96, 223, 179, 0.74);
   }
 
   .panel {
-    border-radius: 20px;
+    border-radius: 4px;
     border: 1px solid var(--line);
-    background: linear-gradient(145deg, rgba(14, 27, 35, 0.92), var(--panel));
+    background: rgba(14, 27, 35, 0.92);
     box-shadow: 0 20px 55px rgba(0, 0, 0, 0.32);
     backdrop-filter: blur(7px);
     padding: 1.1rem 1.2rem;
     animation: reveal 0.45s ease both;
-  }
-
-  .hero {
-    position: relative;
-    overflow: clip;
-  }
-
-  .hero::after {
-    content: "";
-    position: absolute;
-    inset: auto -25% -80% auto;
-    width: 68%;
-    aspect-ratio: 1;
-    background: conic-gradient(
-      from 190deg,
-      rgba(34, 180, 200, 0.2),
-      rgba(244, 163, 64, 0.2),
-      transparent 52%
-    );
-    filter: blur(16px);
-    transform: rotate(-12deg);
-    pointer-events: none;
   }
 
   .hero-head {
@@ -1211,7 +1161,7 @@
   input,
   button {
     border: 1px solid rgba(167, 208, 227, 0.35);
-    border-radius: 11px;
+    border-radius: 3px;
     padding: 0.62rem 0.72rem;
     font: inherit;
     color: var(--ink);
@@ -1236,7 +1186,7 @@
     width: fit-content;
     padding-inline: 1.05rem;
     font-weight: 700;
-    background: linear-gradient(130deg, var(--a), var(--b));
+    background: var(--a);
     color: #0d1c24;
     border-color: transparent;
     box-shadow: 0 14px 30px rgba(28, 156, 183, 0.35);
@@ -1285,7 +1235,7 @@
 
   .meta-grid article {
     border: 1px solid rgba(166, 209, 228, 0.2);
-    border-radius: 14px;
+    border-radius: 4px;
     background: rgba(8, 19, 25, 0.52);
     padding: 0.75rem;
   }
@@ -1315,6 +1265,34 @@
     line-height: 1.35;
   }
 
+  .previous-panel {
+    display: grid;
+    gap: 0.8rem;
+  }
+
+  .analysis-history {
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .analysis-history a {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.7rem;
+    border: 1px solid rgba(166, 209, 228, 0.2);
+    background: rgba(8, 19, 25, 0.52);
+  }
+
+  .analysis-history span,
+  .analysis-history small {
+    overflow-wrap: anywhere;
+    color: #a9c0ce;
+  }
+
+  .empty {
+    color: #a9c0ce;
+  }
+
   a {
     color: #76d6ea;
     text-decoration: none;
@@ -1335,14 +1313,14 @@
     gap: 0.45rem;
     padding: 0.25rem;
     border: 1px solid rgba(155, 205, 227, 0.25);
-    border-radius: 13px;
+    border-radius: 4px;
     background: rgba(6, 17, 24, 0.55);
     width: fit-content;
   }
 
   .analysis-tabs button {
     border: 1px solid rgba(121, 170, 193, 0.26);
-    border-radius: 10px;
+    border-radius: 3px;
     background: rgba(15, 40, 52, 0.7);
     color: #d2e4ee;
     box-shadow: none;
@@ -1360,11 +1338,7 @@
 
   .analysis-tabs button.active {
     border-color: rgba(124, 208, 227, 0.8);
-    background: linear-gradient(
-      130deg,
-      rgba(37, 173, 196, 0.75),
-      rgba(244, 163, 64, 0.65)
-    );
+    background: rgba(37, 173, 196, 0.75);
     color: #07131a;
   }
 

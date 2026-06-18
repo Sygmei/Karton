@@ -1,5 +1,5 @@
 import { AppError } from './app-error';
-import type { CardMap, InputDeck } from './types';
+import type { CardList, CardMap, InputDeck } from './types';
 import { DEFAULT_USER_AGENT, normalizeName } from './utils';
 
 interface FetchArchidektOptions {
@@ -8,6 +8,7 @@ interface FetchArchidektOptions {
 
 const ARCHIDEKT_ALLOWED_HOSTS = new Set(['archidekt.com', 'www.archidekt.com']);
 const ARCHIDEKT_API_BASE = 'https://archidekt.com/api/decks';
+const ARCHIDEKT_FOLDER_API_BASE = 'https://archidekt.com/api/decks/folders';
 
 export function normalizeArchidektDeckUrl(value: string): string {
   const input = String(value || '').trim();
@@ -52,6 +53,49 @@ export function extractArchidektDeckId(deckUrl: string): string {
   return extractDeckIdFromPath(new URL(normalized).pathname, normalized);
 }
 
+export function normalizeArchidektFolderUrl(value: string): string {
+  const input = String(value || '').trim();
+  if (!input) {
+    throw new AppError({
+      userFacingError: 'Archidekt folder URL is required.',
+      adminFacingError: 'Archidekt folder URL is empty.',
+      errorTypeName: 'ArchidektFolderUrlMissingError',
+      httpStatusCode: 400
+    });
+  }
+
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(input) ? input : `https://${input}`;
+  let parsed: URL;
+  try {
+    parsed = new URL(withScheme);
+  } catch {
+    throw new AppError({
+      userFacingError: 'Invalid Archidekt folder URL. Use archidekt.com/folders/<id>.',
+      adminFacingError: `Invalid Archidekt folder URL parse failure: ${value}`,
+      errorTypeName: 'ArchidektFolderUrlInvalidError',
+      httpStatusCode: 400
+    });
+  }
+
+  const host = parsed.hostname.toLowerCase();
+  if (!ARCHIDEKT_ALLOWED_HOSTS.has(host)) {
+    throw new AppError({
+      userFacingError: 'Invalid Archidekt URL host. Use archidekt.com.',
+      adminFacingError: `Invalid Archidekt folder host: ${parsed.hostname}`,
+      errorTypeName: 'ArchidektFolderHostInvalidError',
+      httpStatusCode: 400
+    });
+  }
+
+  const folderId = extractFolderIdFromPath(parsed.pathname, value);
+  return `https://archidekt.com/folders/${folderId}`;
+}
+
+export function extractArchidektFolderId(folderUrl: string): string {
+  const normalized = normalizeArchidektFolderUrl(folderUrl);
+  return extractFolderIdFromPath(new URL(normalized).pathname, normalized);
+}
+
 export async function fetchArchidektDeck(deckUrl: string, options: FetchArchidektOptions = {}): Promise<InputDeck> {
   const normalizedDeckUrl = normalizeArchidektDeckUrl(deckUrl);
   const deckId = extractArchidektDeckId(normalizedDeckUrl);
@@ -79,6 +123,70 @@ export async function fetchArchidektDeck(deckUrl: string, options: FetchArchidek
     url: normalizedDeckUrl,
     commanders: parsed.commanders,
     cards: parsed.cards
+  };
+}
+
+export async function fetchArchidektCardList(value: string, options: FetchArchidektOptions = {}): Promise<CardList> {
+  const normalizedDeckUrl = normalizeArchidektDeckUrl(value);
+  const deckId = extractArchidektDeckId(normalizedDeckUrl);
+  const timeoutMs = options.timeoutMs ?? 20_000;
+  const payload = await fetchArchidektPayload(deckId, timeoutMs);
+  const parsed = parseArchidektDeckPayload(payload, {
+    deckId,
+    normalizedDeckUrl
+  });
+
+  return {
+    source: 'archidekt',
+    listId: deckId,
+    name: parsed.name,
+    url: normalizedDeckUrl,
+    cards: parsed.cards
+  };
+}
+
+export async function fetchArchidektFolderList(value: string, options: FetchArchidektOptions = {}): Promise<CardList> {
+  const normalizedFolderUrl = normalizeArchidektFolderUrl(value);
+  const folderId = extractArchidektFolderId(normalizedFolderUrl);
+  const timeoutMs = options.timeoutMs ?? 20_000;
+  const folderPayloads = await fetchArchidektFolderTree(folderId, timeoutMs);
+  const rootFolder = folderPayloads[0];
+  const cards: CardMap = {};
+  let deckCount = 0;
+
+  for (const folder of folderPayloads) {
+    for (const deck of extractFolderDecks(folder)) {
+      const deckId = extractFolderDeckId(deck);
+      if (!deckId) {
+        continue;
+      }
+      const deckPayload = await fetchArchidektPayload(deckId, timeoutMs);
+      const parsed = parseArchidektDeckPayload(deckPayload, {
+        deckId,
+        normalizedDeckUrl: `https://archidekt.com/decks/${deckId}`
+      });
+      deckCount += 1;
+      for (const [card, quantity] of Object.entries(parsed.cards)) {
+        cards[card] = (cards[card] || 0) + quantity;
+      }
+    }
+  }
+
+  if (!deckCount || !Object.keys(cards).length) {
+    throw new AppError({
+      userFacingError: 'Could not extract cards from this Archidekt folder.',
+      adminFacingError: `No cards parsed for Archidekt folder ${folderId} (${normalizedFolderUrl})`,
+      errorTypeName: 'ArchidektFolderCardsMissingError',
+      httpStatusCode: 422
+    });
+  }
+
+  return {
+    source: 'archidekt',
+    listId: `folder-${folderId}`,
+    name: String(rootFolder?.name || `Archidekt Folder ${folderId}`).trim(),
+    url: normalizedFolderUrl,
+    cards
   };
 }
 
@@ -120,6 +228,79 @@ async function fetchArchidektPayload(deckId: string, timeoutMs: number): Promise
     errorTypeName: 'ArchidektDeckFetchError',
     httpStatusCode: 422
   });
+}
+
+async function fetchArchidektFolderPayload(folderId: string, timeoutMs: number): Promise<Record<string, unknown>> {
+  const endpoint = `${ARCHIDEKT_FOLDER_API_BASE}/${folderId}/`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(endpoint, {
+      method: 'GET',
+      headers: {
+        'user-agent': process.env.MOXFIELD_USER_AGENT?.trim() || DEFAULT_USER_AGENT,
+        accept: 'application/json'
+      },
+      signal: controller.signal
+    });
+    if (!response.ok) {
+      throw new AppError({
+        userFacingError: 'Could not fetch this Archidekt folder. Verify the URL and that the folder is public.',
+        adminFacingError: `Archidekt folder API fetch failed folder=${folderId} status=${response.status}`,
+        errorTypeName: 'ArchidektFolderFetchError',
+        httpStatusCode: response.status === 404 ? 404 : 422
+      });
+    }
+    const payload = (await response.json()) as unknown;
+    if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+      return payload as Record<string, unknown>;
+    }
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    throw new AppError({
+      userFacingError: 'Could not fetch this Archidekt folder. Verify the URL and that the folder is public.',
+      adminFacingError: `Archidekt folder API request failed folder=${folderId} cause=${error instanceof Error ? error.message : String(error)}`,
+      errorTypeName: 'ArchidektFolderRequestError',
+      httpStatusCode: 422,
+      cause: error
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+
+  throw new AppError({
+    userFacingError: 'Archidekt returned an unexpected folder response.',
+    adminFacingError: `Archidekt folder API returned invalid payload for folder=${folderId}`,
+    errorTypeName: 'ArchidektFolderPayloadError',
+    httpStatusCode: 422
+  });
+}
+
+async function fetchArchidektFolderTree(folderId: string, timeoutMs: number): Promise<Record<string, unknown>[]> {
+  const queue = [folderId];
+  const seen = new Set<string>();
+  const folders: Record<string, unknown>[] = [];
+
+  while (queue.length && folders.length < 100) {
+    const current = queue.shift() || '';
+    if (!current || seen.has(current)) {
+      continue;
+    }
+    seen.add(current);
+    const payload = await fetchArchidektFolderPayload(current, timeoutMs);
+    folders.push(payload);
+
+    for (const subfolder of extractSubfolders(payload)) {
+      const id = extractFolderDeckId(subfolder);
+      if (id && !seen.has(id)) {
+        queue.push(id);
+      }
+    }
+  }
+
+  return folders;
 }
 
 function parseArchidektDeckPayload(
@@ -306,6 +487,32 @@ function extractDeckIdFromPath(pathname: string, rawInput: string): string {
     });
   }
   return match[1];
+}
+
+function extractFolderIdFromPath(pathname: string, rawInput: string): string {
+  const match = /^\/folders\/(\d+)/.exec(pathname);
+  if (!match?.[1]) {
+    throw new AppError({
+      userFacingError: 'Invalid Archidekt folder URL. Use archidekt.com/folders/<id>.',
+      adminFacingError: `Could not parse Archidekt folder id from: ${rawInput}`,
+      errorTypeName: 'ArchidektFolderIdParseError',
+      httpStatusCode: 400
+    });
+  }
+  return match[1];
+}
+
+function extractFolderDecks(payload: Record<string, unknown>): Record<string, unknown>[] {
+  return Array.isArray(payload.decks) ? payload.decks.filter(isRecord) : [];
+}
+
+function extractSubfolders(payload: Record<string, unknown>): Record<string, unknown>[] {
+  return Array.isArray(payload.subfolders) ? payload.subfolders.filter(isRecord) : [];
+}
+
+function extractFolderDeckId(value: Record<string, unknown>): string {
+  const id = String(value.id || '').trim();
+  return /^\d+$/.test(id) ? id : '';
 }
 
 function getNested(source: Record<string, unknown>, path: string[]): unknown {

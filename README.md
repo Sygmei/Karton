@@ -1,4 +1,4 @@
-# MtG Meta Analyzer (SvelteKit + PostgreSQL)
+# Karton (SvelteKit + PostgreSQL)
 
 Web app to analyze a Duel Commander Moxfield deck against MtgTop8 data.
 

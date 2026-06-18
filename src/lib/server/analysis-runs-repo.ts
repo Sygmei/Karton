@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { randomBytes } from 'node:crypto';
 
 import { AppError } from './app-error';
@@ -20,6 +20,7 @@ interface SaveAnalysisRunInput {
   ignoreBefore: string | null;
   ignoreAfter: string | null;
   clientIp: string;
+  userId?: string | null;
   traceId?: string | null;
   output: AnalyzeOutput;
   input: AnalysisInputSnapshot;
@@ -38,6 +39,7 @@ export async function saveAnalysisRun(input: SaveAnalysisRunInput): Promise<stri
         ignoreBefore: input.ignoreBefore,
         ignoreAfter: input.ignoreAfter,
         clientIp: input.clientIp,
+        userId: input.userId ?? null,
         traceId: input.traceId ?? null,
         payloadJson: input.output,
         inputJson: input.input
@@ -56,6 +58,40 @@ export async function saveAnalysisRun(input: SaveAnalysisRunInput): Promise<stri
     errorTypeName: 'AnalysisShareIdAllocationError',
     httpStatusCode: 500
   });
+}
+
+export async function listAnalysisRunsForUser(userId: string, limit = 8): Promise<
+  Array<{
+    shareId: string;
+    moxfieldUrl: string;
+    commanderName: string | null;
+    ignoreBefore: string | null;
+    ignoreAfter: string | null;
+    createdAt: string;
+  }>
+> {
+  const rows = await getReadDb()
+    .select({
+      shareId: analysisRuns.shareId,
+      moxfieldUrl: analysisRuns.moxfieldUrl,
+      commanderName: analysisRuns.commanderName,
+      ignoreBefore: analysisRuns.ignoreBefore,
+      ignoreAfter: analysisRuns.ignoreAfter,
+      createdAt: analysisRuns.createdAt
+    })
+    .from(analysisRuns)
+    .where(eq(analysisRuns.userId, userId))
+    .orderBy(desc(analysisRuns.createdAt))
+    .limit(limit);
+
+  return rows.map((row) => ({
+    shareId: row.shareId,
+    moxfieldUrl: row.moxfieldUrl,
+    commanderName: row.commanderName,
+    ignoreBefore: row.ignoreBefore,
+    ignoreAfter: row.ignoreAfter,
+    createdAt: asIsoString(row.createdAt)
+  }));
 }
 
 export async function findAnalysisRunByShareId(shareId: string): Promise<{

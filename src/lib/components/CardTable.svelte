@@ -221,7 +221,7 @@
   .table-wrap {
     overflow: auto;
     border: 1px solid rgba(164, 208, 227, 0.22);
-    border-radius: 14px;
+    border-radius: 4px;
     background: rgba(5, 18, 24, 0.45);
   }
 
@@ -261,7 +261,7 @@
     position: sticky;
     top: 0;
     z-index: 1;
-    background: linear-gradient(180deg, rgba(24, 53, 67, 0.92), rgba(15, 38, 49, 0.92));
+    background: rgba(24, 53, 67, 0.92);
     color: #d4e6f1;
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -277,7 +277,7 @@
   }
 
   tbody tr:hover {
-    background: linear-gradient(90deg, rgba(67, 184, 207, 0.16), rgba(245, 163, 68, 0.16));
+    background: rgba(67, 184, 207, 0.16);
   }
 
   tbody td:first-child {
@@ -368,7 +368,7 @@
     right: 1rem;
     width: 248px;
     max-height: min(82vh, 420px);
-    border-radius: 14px;
+    border-radius: 4px;
     border: 1px solid rgba(153, 210, 232, 0.35);
     background: rgba(6, 16, 22, 0.96);
     box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45);
@@ -399,7 +399,7 @@
 
   .preview-toolbar button {
     border: 1px solid rgba(146, 194, 216, 0.32);
-    border-radius: 8px;
+    border-radius: 3px;
     background: rgba(17, 45, 59, 0.78);
     color: #d4e6f1;
     font: inherit;

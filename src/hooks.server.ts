@@ -1,5 +1,6 @@
 import type { Handle } from '@sveltejs/kit';
 
+import { resolveSessionUser } from '$lib/server/auth';
 import { initOpenTelemetry, withSpan } from '$lib/server/otel';
 
 initOpenTelemetry();
@@ -7,6 +8,10 @@ initOpenTelemetry();
 export const handle: Handle = async ({ event, resolve }) => {
   const clientIp = resolveClientIp(event);
   const requestKind = classifyRequest(event.request.method, event.url.pathname);
+  event.locals.user = await resolveSessionUser(event.cookies).catch((error) => {
+    console.error('[auth] failed to resolve session user', error);
+    return null;
+  });
 
   if (requestKind === 'analysis_progress_poll') {
     return await resolve(event);
@@ -77,6 +82,18 @@ function classifyRequest(method: string, pathname: string): string {
   }
   if (verb === 'GET' && /^\/api\/progress\/[^/]+$/.test(pathname)) {
     return 'analysis_progress_poll';
+  }
+  if (verb === 'GET' && /^\/connect\/[^/]+$/.test(pathname)) {
+    return 'auth_connect';
+  }
+  if (pathname.startsWith('/admin')) {
+    return 'admin';
+  }
+  if (pathname.startsWith('/account')) {
+    return 'account';
+  }
+  if (pathname.startsWith('/matches')) {
+    return 'matches';
   }
   return 'other';
 }

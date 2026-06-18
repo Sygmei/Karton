@@ -4,7 +4,9 @@
 declare global {
   namespace App {
     // interface Error {}
-    // interface Locals {}
+    interface Locals {
+      user: import('$lib/server/auth').AppUser | null;
+    }
     // interface PageData {}
     // interface Platform {}
   }

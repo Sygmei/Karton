@@ -18,7 +18,7 @@
 </script>
 
 <svelte:head>
-  <title>Shared Analysis · MtG Meta Analyzer</title>
+  <title>Shared Analysis - Karton</title>
 </svelte:head>
 
 <main class="stage">
@@ -26,7 +26,7 @@
     <p class="eyebrow">Shared Analysis</p>
     <h1>{data.output.moxfieldDeck.name}</h1>
     <p class="meta">
-      Commander: {data.output.moxfieldDeck.commanders.join(' / ')} · Analyzed {new Date(data.output.analyzedAt).toLocaleString()}
+      Commander: {data.output.moxfieldDeck.commanders.join(' / ')} - Analyzed {new Date(data.output.analyzedAt).toLocaleString()}
     </p>
     {#if data.ignoreBefore || data.ignoreAfter}
       <p class="meta ignore-meta">
@@ -135,9 +135,9 @@
   }
 
   .panel {
-    border-radius: 18px;
+    border-radius: 4px;
     border: 1px solid rgba(183, 213, 230, 0.28);
-    background: linear-gradient(145deg, rgba(14, 27, 35, 0.92), rgba(14, 27, 35, 0.78));
+    background: rgba(14, 27, 35, 0.92);
     padding: 1rem 1.1rem;
   }
 
@@ -182,7 +182,7 @@
     display: inline-flex;
     align-items: center;
     border: 1px solid rgba(129, 197, 221, 0.42);
-    border-radius: 999px;
+    border-radius: 3px;
     padding: 0.12rem 0.55rem;
     background: rgba(8, 23, 31, 0.55);
     color: #d3e8f3;
@@ -221,7 +221,7 @@
 
   .stats article {
     border: 1px solid rgba(166, 209, 228, 0.2);
-    border-radius: 14px;
+    border-radius: 4px;
     background: rgba(8, 19, 25, 0.52);
     padding: 0.75rem;
   }
@@ -252,14 +252,14 @@
     gap: 0.45rem;
     padding: 0.25rem;
     border: 1px solid rgba(155, 205, 227, 0.25);
-    border-radius: 13px;
+    border-radius: 4px;
     background: rgba(6, 17, 24, 0.55);
     width: fit-content;
   }
 
   .analysis-tabs button {
     border: 1px solid rgba(121, 170, 193, 0.26);
-    border-radius: 10px;
+    border-radius: 3px;
     background: rgba(15, 40, 52, 0.7);
     color: #d2e4ee;
     padding: 0.45rem 0.8rem;
@@ -272,7 +272,7 @@
 
   .analysis-tabs button.active {
     border-color: rgba(124, 208, 227, 0.8);
-    background: linear-gradient(130deg, rgba(37, 173, 196, 0.75), rgba(244, 163, 64, 0.65));
+    background: rgba(37, 173, 196, 0.75);
     color: #07131a;
   }
 
