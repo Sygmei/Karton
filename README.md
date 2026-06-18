@@ -44,6 +44,8 @@ PUBLIC_FARO_ENABLED=false
 PUBLIC_FARO_URL=
 PUBLIC_FARO_APP_NAME=mtg-meta-analyzer-web
 PUBLIC_FARO_APP_VERSION=0.1.0
+MYTHIC_TOOLS_API_KEY=
+MYTHIC_TOOLS_WEB_KEY=
 ```
 
 When `OTEL_ENABLED=true`, the app exports traces to `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` if set, otherwise `${OTEL_EXPORTER_OTLP_ENDPOINT}/v1/traces`.
@@ -108,6 +110,19 @@ kubectl -n mtg-meta-analyzer create secret generic postgresql-credentials \
   --from-literal=connection-string='postgres://postgres:postgres@postgres:5432/mtg_meta_analyzer' \
   --from-literal=connection-string-ro='postgres://postgres:postgres@postgres:5432/mtg_meta_analyzer' \
   --from-literal=connection-string-admin='postgres://postgres:postgres@postgres:5432/mtg_meta_analyzer'
+```
+
+For Mythic Tools imports, create an existing secret named `mythic-tools-credentials` with:
+
+- `api-key`
+- `web-key`
+
+Example:
+
+```bash
+kubectl -n mtg-meta-analyzer create secret generic mythic-tools-credentials \
+  --from-literal=api-key='your-api-key' \
+  --from-literal=web-key='your-web-key'
 ```
 
 Install:

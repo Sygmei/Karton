@@ -1,8 +1,8 @@
 // @ts-nocheck
 import { load } from 'cheerio';
 
-import { AppError } from './app-error';
-import type { CommanderEntry, DeckRecord } from './types';
+import { AppError } from '../server/app-error';
+import type { CommanderEntry, DeckRecord } from '../server/types';
 import {
   DEFAULT_USER_AGENT,
   absolutizeUrl,
@@ -12,7 +12,7 @@ import {
   sleep,
   toDateStart,
   withQueryParams
-} from './utils';
+} from '../server/utils';
 
 const BASE_URL = 'https://www.mtgtop8.com';
 const DUEL_COMMANDER_ALL_META = '56';

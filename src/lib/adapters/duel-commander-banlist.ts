@@ -1,10 +1,10 @@
 import { load } from 'cheerio';
 import { eq, sql } from 'drizzle-orm';
 
-import { AppError } from './app-error';
-import { getReadDb, getWriteDb } from './db';
-import { duelCommanderBanlistCache } from './db-schema';
-import { DEFAULT_USER_AGENT, normalizeName } from './utils';
+import { AppError } from '../server/app-error';
+import { getReadDb, getWriteDb } from '../server/db';
+import { duelCommanderBanlistCache } from '../server/db-schema';
+import { DEFAULT_USER_AGENT, normalizeName } from '../server/utils';
 
 const DEFAULT_BANLIST_URL = 'https://www.duelcommander.org/banlist/';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;

@@ -6,9 +6,9 @@ import { load } from 'cheerio';
 import { trace } from '@opentelemetry/api';
 import { chromium } from 'playwright';
 
-import { AppError, isAppError } from './app-error';
-import type { CardMap, MoxfieldDeck } from './types';
-import { DEFAULT_USER_AGENT, normalizeName } from './utils';
+import { AppError, isAppError } from '../server/app-error';
+import type { CardMap, MoxfieldDeck } from '../server/types';
+import { DEFAULT_USER_AGENT, normalizeName } from '../server/utils';
 
 interface FetchMoxfieldOptions {
   timeoutMs?: number;

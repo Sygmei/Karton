@@ -1,8 +1,8 @@
 import { fail } from '@sveltejs/kit';
 
+import { normalizeSupportedDeckUrl } from '$lib/adapters/deck-source';
 import { listAnalysisRunsForUser, saveAnalysisRun } from '$lib/server/analysis-runs-repo';
 import { userToJson } from '$lib/server/auth';
-import { normalizeSupportedDeckUrl } from '$lib/server/deck-source';
 import { isAppError } from '$lib/server/app-error';
 import { getTraceId, withSpan } from '$lib/server/otel';
 import { completeProgress, failProgress, initProgress, updateProgress } from '$lib/server/progress';

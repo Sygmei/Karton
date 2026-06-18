@@ -7,8 +7,8 @@ import {
 import { fetchCardmarketSellerList, normalizeCardmarketUserUrl } from './cardmarket';
 import { fetchMoxfieldDeck, normalizeMoxfieldDeckUrl } from './moxfield';
 import { fetchMythicToolsList, normalizeMythicToolsListUrl } from './mythic-tools';
-import { AppError } from './app-error';
-import type { CardList, CardListSource } from './types';
+import { AppError } from '../server/app-error';
+import type { CardList, CardListSource } from '../server/types';
 
 interface FetchCardListOptions {
   headless?: boolean;

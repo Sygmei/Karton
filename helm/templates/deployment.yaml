@@ -89,6 +89,16 @@ spec:
                 secretKeyRef:
                   name: postgresql-credentials
                   key: connection-string-admin
+            - name: MYTHIC_TOOLS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: mythic-tools-credentials
+                  key: api-key
+            - name: MYTHIC_TOOLS_WEB_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: mythic-tools-credentials
+                  key: web-key
             - name: S3_ENDPOINT_URL
               valueFrom:
                 secretKeyRef:

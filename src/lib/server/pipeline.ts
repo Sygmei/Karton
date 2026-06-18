@@ -1,14 +1,14 @@
 import { analyzeCards } from './analysis';
+import { fetchInputDeckFromUrl } from '../adapters/deck-source';
+import { getDuelCommanderDeckBannedCardsNormalized } from '../adapters/duel-commander-banlist';
+import { MtgTop8Client, type CrawlProgressEvent } from '../adapters/mtgtop8';
 import { isAppError } from './app-error';
-import { fetchInputDeckFromUrl } from './deck-source';
-import { getDuelCommanderDeckBannedCardsNormalized } from './duel-commander-banlist';
 import {
   getLatestCachedEventDate,
   insertDecksForCommander,
   loadDecksForCommanderFromWrite,
   upsertCommanderCache
 } from './mtgtop8-cache-repo';
-import { MtgTop8Client, type CrawlProgressEvent } from './mtgtop8';
 import { withSpan } from './otel';
 import type { AnalyzeOutput, DeckRecord } from './types';
 import { formatDate, slugify } from './utils';

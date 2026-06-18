@@ -5,6 +5,12 @@ Create the database secret once in the target namespace:
     --from-literal=connection-string-ro='postgres://postgres:postgres@postgres:5432/mtg_meta_analyzer' \
     --from-literal=connection-string-admin='postgres://postgres:postgres@postgres:5432/mtg_meta_analyzer'
 
+Create the Mythic Tools secret once in the target namespace:
+
+  kubectl create secret generic mythic-tools-credentials \
+    --from-literal=api-key='your-api-key' \
+    --from-literal=web-key='your-web-key'
+
 Port-forward the app:
 
   kubectl port-forward svc/karton-service 3000:3000

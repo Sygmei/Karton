@@ -1,7 +1,7 @@
-import { AppError } from './app-error';
+import { AppError } from '../server/app-error';
 import { fetchArchidektDeck, normalizeArchidektDeckUrl } from './archidekt';
 import { fetchMoxfieldDeck, normalizeMoxfieldDeckUrl } from './moxfield';
-import type { DeckSource, InputDeck } from './types';
+import type { DeckSource, InputDeck } from '../server/types';
 
 interface FetchInputDeckOptions {
   headless?: boolean;
@@ -65,4 +65,3 @@ export async function fetchInputDeckFromUrl(value: string, options: FetchInputDe
   }
   return await fetchArchidektDeck(resolved.normalizedUrl);
 }
-

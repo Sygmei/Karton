@@ -1,5 +1,5 @@
+import { fetchCardListFromUrl } from '../adapters/card-list-source';
 import { AppError, isAppError } from './app-error';
-import { fetchCardListFromUrl } from './card-list-source';
 import { withSpan } from './otel';
 import type { CardList, CardListMatchResult, CardMap, MatchedCard, UserContactMatchResult } from './types';
 import type { SavedUserCardList } from './user-lists';

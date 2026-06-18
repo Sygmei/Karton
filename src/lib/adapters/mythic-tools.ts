@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 
-import { AppError } from './app-error';
-import type { CardList, CardMap } from './types';
-import { DEFAULT_USER_AGENT } from './utils';
+import { AppError } from '../server/app-error';
+import type { CardList, CardMap } from '../server/types';
+import { DEFAULT_USER_AGENT } from '../server/utils';
 
 interface FetchMythicToolsOptions {
   timeoutMs?: number;
@@ -10,8 +10,6 @@ interface FetchMythicToolsOptions {
 
 const MYTHIC_ALLOWED_HOSTS = new Set(['mythic.tools', 'www.mythic.tools']);
 const MYTHIC_API_BASE = 'https://api.mythic.tools';
-const MYTHIC_PUBLIC_API_KEY = 'AIzaSyBSEcgdWo0mOif56fGXztJO7tCsmRY1MX0';
-const MYTHIC_PUBLIC_WEB_KEY = 'AIzaSyAVFAP751DwWdwsk2-RkqY3E0Z3sPAGtlo';
 const MYTHIC_SIGNATURE_SLUG_1 = 'mythic_sloot';
 const MYTHIC_SIGNATURE_SLUG_2 = 'cihtym_tools';
 const SHORT_ID_ALPHABET = '23456789abcdefghijkmnpqrstuvwyzABCDEFGHJKLMNPQRSTUVWYZ';
@@ -174,7 +172,8 @@ async function fetchMythicToolsPage(
 
   try {
     const timestamp = Date.now();
-    const webKey = process.env.MYTHIC_TOOLS_WEB_KEY?.trim() || MYTHIC_PUBLIC_WEB_KEY;
+    const apiKey = getRequiredMythicToolsSecret('MYTHIC_TOOLS_API_KEY');
+    const webKey = getRequiredMythicToolsSecret('MYTHIC_TOOLS_WEB_KEY');
     const response = await fetch(url.toString(), {
       method: 'GET',
       headers: {
@@ -183,7 +182,7 @@ async function fetchMythicToolsPage(
         'user-agent': process.env.MOXFIELD_USER_AGENT?.trim() || DEFAULT_USER_AGENT,
         origin: 'https://mythic.tools',
         referer: 'https://mythic.tools/',
-        'x-api-key': process.env.MYTHIC_TOOLS_API_KEY?.trim() || MYTHIC_PUBLIC_API_KEY,
+        'x-api-key': apiKey,
         'x-app-locale': 'en',
         'x-mythic-device': 'web',
         'x-mythic-signature': createMythicSignature(timestamp, webKey),
@@ -223,6 +222,20 @@ async function fetchMythicToolsPage(
   } finally {
     clearTimeout(timer);
   }
+}
+
+function getRequiredMythicToolsSecret(name: 'MYTHIC_TOOLS_API_KEY' | 'MYTHIC_TOOLS_WEB_KEY'): string {
+  const value = process.env[name]?.trim();
+  if (value) {
+    return value;
+  }
+
+  throw new AppError({
+    userFacingError: 'Mythic Tools import is not configured yet.',
+    adminFacingError: `Missing required Mythic Tools environment variable: ${name}`,
+    errorTypeName: 'MythicToolsConfigMissingError',
+    httpStatusCode: 500
+  });
 }
 
 function createMythicSignature(timestamp: number, webKey: string): string {
