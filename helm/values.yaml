@@ -16,9 +16,3 @@ otel:
   headers: ""
   # Optional extra resource attributes, serialized as key=value pairs separated by commas.
   resourceAttributes: ""
-faro:
-  enabled: false
-  endpoint: "https://faro.obencorp.dev/collect"
-  appName: "karton-web"
-  # Leave empty to default to .Values.version
-  appVersion: ""

@@ -143,34 +143,38 @@
     previewLabel = '';
     activeCard = '';
   }
+
+  const tableWrapClass = "overflow-auto rounded border border-white/10 bg-stone-950/50";
+  const cellClass = "border-b border-white/10 px-3 py-2 text-left align-top";
+  const numericCellClass = `${cellClass} w-28 whitespace-nowrap text-stone-300`;
 </script>
 
 {#if cards.length === 0}
-  <p class="empty">No cards found for this section in the selected date range.</p>
+  <p class="text-sm text-stone-400">No cards found for this section in the selected date range.</p>
 {:else}
-  <div class="table-wrap">
-    <table>
-      <thead>
+  <div class={tableWrapClass}>
+    <table class="w-full table-fixed border-collapse text-sm">
+      <thead class="bg-stone-900 text-xs uppercase tracking-wider text-stone-400">
         <tr>
-          <th class="col-card">Card</th>
-          <th class="col-decks">Decks</th>
-          <th class="col-ratio">Ratio</th>
+          <th class={cellClass}>Card</th>
+          <th class={numericCellClass}>Decks</th>
+          <th class={`${cellClass} w-24 whitespace-nowrap`}>Ratio</th>
         </tr>
       </thead>
       <tbody>
-        {#each cards as row, idx}
-          <tr style={`--row-delay:${idx * 18}ms`}>
-            <td class="card-cell">
+        {#each cards as row}
+          <tr class="hover:bg-white/5">
+            <td class={cellClass}>
               <button
                 type="button"
-                class="card-link"
+                class="inline-flex max-w-full items-center gap-2 border-0 bg-transparent p-0 text-left text-lime-300 underline-offset-4 hover:underline"
                 on:mouseenter={() => openPreview(row.card)}
                 on:focus={() => openPreview(row.card)}
               >
-                <span class="card-name" class:banned-name={Boolean(row.banned)}>{row.card}</span>
+                <span class={`truncate ${row.banned ? "text-red-200 line-through decoration-red-300" : ""}`}>{row.card}</span>
                 {#if row.banned}
                   <span
-                    class="danger-icon"
+                    class="grid size-5 shrink-0 place-items-center rounded bg-red-300 text-xs text-stone-950"
                     title="Banned in Duel Commander"
                     aria-label="Banned in Duel Commander"
                   >
@@ -179,8 +183,8 @@
                 {/if}
               </button>
             </td>
-            <td class="decks-cell">{row.decksWithCard} / {row.totalDecks}</td>
-            <td class="ratio-cell">{toPercent(row.ratio)}</td>
+            <td class={numericCellClass}>{row.decksWithCard} / {row.totalDecks}</td>
+            <td class={`${cellClass} w-24 whitespace-nowrap text-stone-300`}>{toPercent(row.ratio)}</td>
           </tr>
         {/each}
       </tbody>
@@ -189,302 +193,24 @@
 {/if}
 
 {#if previewStatus !== 'hidden'}
-  <div class="preview-layer">
-    <aside class="preview" aria-live="polite" aria-busy={previewStatus === 'loading'}>
-      <div class="preview-toolbar">
-        <p>Scryfall Preview</p>
-        <button type="button" on:click={closePreview} aria-label="Close card preview">Close</button>
+  <div class="fixed inset-0 z-50 grid place-items-end bg-black/45 p-4 sm:place-items-center">
+    <aside class="grid max-h-[90vh] w-full max-w-sm gap-3 overflow-auto rounded border border-white/15 bg-stone-950 p-4 shadow-2xl" aria-live="polite" aria-busy={previewStatus === 'loading'}>
+      <div class="flex items-center justify-between gap-3">
+        <p class="font-bold">Scryfall Preview</p>
+        <button class="rounded bg-lime-300 px-3 py-1.5 text-sm font-bold text-stone-950" type="button" on:click={closePreview} aria-label="Close card preview">Close</button>
       </div>
 
       {#if previewStatus === 'loading'}
-        <p class="preview-state">Loading Scryfall preview for <strong>{previewLabel}</strong>...</p>
+        <p class="text-sm text-stone-400">Loading Scryfall preview for <strong>{previewLabel}</strong>...</p>
       {:else if previewStatus === 'error'}
-        <p class="preview-state">{previewError}</p>
+        <p class="text-sm text-red-200">{previewError}</p>
       {:else if previewCard}
-        <img src={previewCard.imageUrl} alt={`Scryfall preview for ${previewCard.name}`} loading="lazy" />
-        <div class="preview-meta">
-          <p>{previewCard.name}</p>
-          <a href={previewCard.scryfallUrl} target="_blank" rel="noreferrer">Open on Scryfall</a>
+        <img class="mx-auto max-h-[70vh] rounded" src={previewCard.imageUrl} alt={`Scryfall preview for ${previewCard.name}`} loading="lazy" />
+        <div class="grid gap-1 text-center">
+          <p class="font-bold">{previewCard.name}</p>
+          <a class="text-lime-300 no-underline hover:underline" href={previewCard.scryfallUrl} target="_blank" rel="noreferrer">Open on Scryfall</a>
         </div>
       {/if}
     </aside>
   </div>
 {/if}
-
-<style>
-  .empty {
-    margin: 0;
-    color: #aac2cf;
-    font-size: 0.92rem;
-  }
-
-  .table-wrap {
-    overflow: auto;
-    border: 1px solid rgba(164, 208, 227, 0.22);
-    border-radius: 4px;
-    background: rgba(5, 18, 24, 0.45);
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.9rem;
-    table-layout: fixed;
-  }
-
-  th,
-  td {
-    text-align: left;
-    padding: 0.57rem 0.65rem;
-    white-space: normal;
-    border-bottom: 1px solid rgba(166, 206, 225, 0.13);
-    vertical-align: top;
-  }
-
-  .col-card {
-    width: auto;
-  }
-
-  .col-decks,
-  .decks-cell {
-    width: 7rem;
-    white-space: nowrap;
-  }
-
-  .col-ratio,
-  .ratio-cell {
-    width: 5rem;
-    white-space: nowrap;
-  }
-
-  thead th {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: rgba(24, 53, 67, 0.92);
-    color: #d4e6f1;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    font-size: 0.73rem;
-    font-weight: 800;
-  }
-
-  tbody tr {
-    opacity: 0;
-    transform: translateY(2px);
-    animation: rowIn 220ms ease forwards;
-    animation-delay: var(--row-delay, 0ms);
-  }
-
-  tbody tr:hover {
-    background: rgba(67, 184, 207, 0.16);
-  }
-
-  tbody td:first-child {
-    font-weight: 700;
-    color: #ebf4f9;
-  }
-
-  .card-cell {
-    min-width: 0;
-  }
-
-  .card-link {
-    border: 0;
-    background: transparent;
-    color: inherit;
-    font: inherit;
-    cursor: pointer;
-    padding: 0;
-    text-align: left;
-    font-weight: inherit;
-    line-height: 1.25;
-    display: inline-flex;
-    align-items: flex-start;
-    gap: 0.35rem;
-    white-space: normal;
-    width: 100%;
-  }
-
-  .card-link:hover,
-  .card-link:focus-visible {
-    color: #7ae5f5;
-    text-decoration: underline;
-    outline: none;
-  }
-
-  .card-name {
-    color: inherit;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-  }
-
-  .banned-name {
-    color: #ff5f65;
-    text-decoration: line-through;
-    text-decoration-thickness: 2px;
-    text-decoration-color: #ff5f65;
-    text-underline-offset: 2px;
-  }
-
-  .card-link:hover .banned-name,
-  .card-link:focus-visible .banned-name {
-    color: #ff5f65;
-  }
-
-  .danger-icon {
-    color: #ff8655;
-    font-size: 0.82rem;
-    line-height: 1;
-  }
-
-  tbody td:last-child {
-    color: #8fe3ba;
-    font-variant-numeric: tabular-nums;
-    font-weight: 700;
-  }
-
-  tbody tr:last-child td {
-    border-bottom: 0;
-  }
-
-  @keyframes rowIn {
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .preview-layer {
-    position: fixed;
-    inset: 0;
-    z-index: 1200;
-    pointer-events: none;
-  }
-
-  .preview {
-    position: absolute;
-    top: 5.3rem;
-    right: 1rem;
-    width: 248px;
-    max-height: min(82vh, 420px);
-    border-radius: 4px;
-    border: 1px solid rgba(153, 210, 232, 0.35);
-    background: rgba(6, 16, 22, 0.96);
-    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45);
-    backdrop-filter: blur(5px);
-    overflow: hidden;
-    pointer-events: auto;
-    animation: previewIn 140ms ease both;
-  }
-
-  .preview-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.6rem;
-    padding: 0.45rem 0.6rem;
-    border-bottom: 1px solid rgba(149, 199, 220, 0.2);
-    background: rgba(9, 29, 39, 0.92);
-  }
-
-  .preview-toolbar p {
-    margin: 0;
-    color: #d8ebf5;
-    font-size: 0.73rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-weight: 800;
-  }
-
-  .preview-toolbar button {
-    border: 1px solid rgba(146, 194, 216, 0.32);
-    border-radius: 3px;
-    background: rgba(17, 45, 59, 0.78);
-    color: #d4e6f1;
-    font: inherit;
-    font-size: 0.7rem;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    padding: 0.24rem 0.46rem;
-    cursor: pointer;
-  }
-
-  .preview-toolbar button:hover {
-    border-color: rgba(124, 209, 230, 0.66);
-  }
-
-  .preview img {
-    display: block;
-    width: 100%;
-    height: auto;
-    border-bottom: 1px solid rgba(149, 199, 220, 0.2);
-  }
-
-  .preview-meta {
-    padding: 0.55rem 0.65rem 0.6rem;
-  }
-
-  .preview-meta p {
-    margin: 0;
-    color: #f2f8fb;
-    font-size: 0.84rem;
-    font-weight: 700;
-    line-height: 1.35;
-  }
-
-  .preview-meta a {
-    margin-top: 0.36rem;
-    display: inline-block;
-    font-size: 0.77rem;
-    color: #77d7eb;
-    text-decoration: none;
-  }
-
-  .preview-meta a:hover {
-    text-decoration: underline;
-  }
-
-  .preview-state {
-    margin: 0;
-    padding: 0.9rem 0.8rem;
-    color: #b9cfdb;
-    font-size: 0.81rem;
-    line-height: 1.4;
-  }
-
-  @keyframes previewIn {
-    from {
-      opacity: 0;
-      transform: translateY(4px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @media (max-width: 860px) {
-    table {
-      font-size: 0.84rem;
-    }
-
-    .col-decks,
-    .decks-cell {
-      width: 6rem;
-    }
-
-    .col-ratio,
-    .ratio-cell {
-      width: 4.3rem;
-    }
-
-    .preview {
-      right: 0.65rem;
-      top: auto;
-      bottom: 0.65rem;
-      width: min(248px, calc(100vw - 1.3rem));
-      max-height: min(65vh, 420px);
-    }
-  }
-</style>

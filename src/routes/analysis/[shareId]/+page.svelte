@@ -15,84 +15,91 @@
   type AnalysisTab = 'cut' | 'add' | 'keep';
   let activeAnalysisTab: AnalysisTab = 'cut';
   $: deckSourceLabel = data.output.moxfieldDeck.source === 'archidekt' ? 'Archidekt' : 'Moxfield';
+
+  const pageClass = "mx-auto grid w-[min(1200px,94vw)] gap-4 py-4 pb-12";
+  const panelClass = "rounded border border-white/10 bg-stone-900/80 p-4";
+  const eyebrowClass = "text-xs font-extrabold uppercase tracking-widest text-lime-300";
+  const statLabelClass = "text-xs font-bold uppercase tracking-wider text-stone-400";
+  const statValueClass = "mt-1 text-lg font-black text-stone-100";
+  const linkButtonClass = "rounded border border-lime-200/30 px-3 py-2 text-sm font-bold text-lime-300 no-underline hover:bg-lime-300 hover:text-stone-950";
 </script>
 
 <svelte:head>
   <title>Shared Analysis - Karton</title>
 </svelte:head>
 
-<main class="stage">
-  <section class="panel">
-    <p class="eyebrow">Shared Analysis</p>
-    <h1>{data.output.moxfieldDeck.name}</h1>
-    <p class="meta">
+<main class={pageClass}>
+  <section class={panelClass}>
+    <p class={eyebrowClass}>Shared Analysis</p>
+    <h1 class="mt-2 text-2xl font-black">{data.output.moxfieldDeck.name}</h1>
+    <p class="mt-2 text-stone-400">
       Commander: {data.output.moxfieldDeck.commanders.join(' / ')} - Analyzed {new Date(data.output.analyzedAt).toLocaleString()}
     </p>
     {#if data.ignoreBefore || data.ignoreAfter}
-      <p class="meta ignore-meta">
+      <p class="mt-3 flex flex-wrap items-center gap-2 text-stone-400">
         {#if data.ignoreBefore}
           <span>Ignore MtgTop8 decks before:</span>
-          <code class="date-badge">{data.ignoreBefore}</code>
+          <code class="rounded bg-stone-950 px-2 py-1 text-lime-300">{data.ignoreBefore}</code>
         {/if}
         {#if data.ignoreAfter}
           <span>Ignore MtgTop8 decks after:</span>
-          <code class="date-badge">{data.ignoreAfter}</code>
+          <code class="rounded bg-stone-950 px-2 py-1 text-lime-300">{data.ignoreAfter}</code>
         {/if}
       </p>
     {/if}
-    <p class="meta">
-      Share id: <code>{data.shareId}</code>
+    <p class="mt-2 text-stone-400">
+      Share id: <code class="rounded bg-stone-950 px-2 py-1 text-lime-300">{data.shareId}</code>
     </p>
-    <div class="actions">
-      <a href="/" rel="noreferrer">New analysis</a>
-      <a href={data.output.moxfieldDeck.url} target="_blank" rel="noreferrer">Open {deckSourceLabel}</a>
-      <a href={data.shareUrl} target="_blank" rel="noreferrer">Permalink</a>
+    <div class="mt-4 flex flex-wrap gap-2">
+      <a class={linkButtonClass} href="/analyzer" rel="noreferrer">New analysis</a>
+      <a class={linkButtonClass} href={data.output.moxfieldDeck.url} target="_blank" rel="noreferrer">Open {deckSourceLabel}</a>
+      <a class={linkButtonClass} href={data.shareUrl} target="_blank" rel="noreferrer">Permalink</a>
     </div>
   </section>
 
-  <section class="panel">
-    <div class="stats">
-      <article>
-        <p class="k">MtgTop8 Commander</p>
-        <p class="v">
-          <a href={data.output.commander.url} target="_blank" rel="noreferrer">{data.commanderName}</a>
+  <section class={panelClass}>
+    <div class="grid gap-3 md:grid-cols-3">
+      <article class="rounded border border-white/10 bg-stone-950/60 p-4">
+        <p class={statLabelClass}>MtgTop8 Commander</p>
+        <p class={statValueClass}>
+          <a class="text-lime-300 no-underline" href={data.output.commander.url} target="_blank" rel="noreferrer">{data.commanderName}</a>
         </p>
       </article>
-      <article>
-        <p class="k">Decks considered</p>
-        <p class="v">{data.output.analysis.totalDecksConsidered}</p>
+      <article class="rounded border border-white/10 bg-stone-950/60 p-4">
+        <p class={statLabelClass}>Decks considered</p>
+        <p class={statValueClass}>{data.output.analysis.totalDecksConsidered}</p>
       </article>
-      <article>
-        <p class="k">Cached decks</p>
-        <p class="v">{data.output.cache.totalCachedDeckRows}</p>
+      <article class="rounded border border-white/10 bg-stone-950/60 p-4">
+        <p class={statLabelClass}>Cached decks</p>
+        <p class={statValueClass}>{data.output.cache.totalCachedDeckRows}</p>
       </article>
     </div>
   </section>
 
-  <section class="panel analysis-tabs-panel">
-    <div class="analysis-tabs" role="tablist" aria-label="Shared analysis views">
+  <section class={`${panelClass} grid gap-4`}>
+    <div class="grid grid-cols-3 rounded border border-white/10 bg-stone-950 p-1" role="tablist" aria-label="Shared analysis views">
       <button
+        class={`rounded px-3 py-2 font-bold ${activeAnalysisTab === 'cut' ? "bg-lime-300 text-stone-950" : "text-stone-300 hover:bg-stone-800"}`}
         type="button"
         role="tab"
-        class:active={activeAnalysisTab === 'cut'}
         aria-selected={activeAnalysisTab === 'cut'}
         on:click={() => (activeAnalysisTab = 'cut')}
       >
         Cut
       </button>
       <button
+        class={`rounded px-3 py-2 font-bold ${activeAnalysisTab === 'add' ? "bg-lime-300 text-stone-950" : "text-stone-300 hover:bg-stone-800"}`}
         type="button"
         role="tab"
-        class:active={activeAnalysisTab === 'add'}
         aria-selected={activeAnalysisTab === 'add'}
         on:click={() => (activeAnalysisTab = 'add')}
       >
         Add
       </button>
       <button
+        class={`rounded px-3 py-2 font-bold ${activeAnalysisTab === 'keep' ? "bg-lime-300 text-stone-950" : "text-stone-300 hover:bg-stone-800"}`}
         type="button"
         role="tab"
-        class:active={activeAnalysisTab === 'keep'}
         aria-selected={activeAnalysisTab === 'keep'}
         on:click={() => (activeAnalysisTab = 'keep')}
       >
@@ -101,202 +108,20 @@
     </div>
 
     {#if activeAnalysisTab === 'cut'}
-      <article class="analysis-view cut">
-        <h2>Cards To Cut</h2>
+      <article class="grid gap-3">
+        <h2 class="text-xl font-bold">Cards To Cut</h2>
         <CardTable cards={data.output.analysis.cut} />
       </article>
     {:else if activeAnalysisTab === 'add'}
-      <article class="analysis-view add">
-        <h2>Cards To Add</h2>
+      <article class="grid gap-3">
+        <h2 class="text-xl font-bold">Cards To Add</h2>
         <CardTable cards={data.output.analysis.toAdd} />
       </article>
     {:else}
-      <article class="analysis-view keep">
-        <h2>Cards To Keep</h2>
+      <article class="grid gap-3">
+        <h2 class="text-xl font-bold">Cards To Keep</h2>
         <CardTable cards={data.output.analysis.keep} />
       </article>
     {/if}
   </section>
 </main>
-
-<style>
-  :global(body) {
-    margin: 0;
-    background: #0b1217;
-    color: #eef4f8;
-    font-family: 'Space Grotesk', 'Avenir Next', 'Segoe UI', sans-serif;
-  }
-
-  .stage {
-    width: min(1200px, 94vw);
-    margin: 1rem auto 2.5rem;
-    display: grid;
-    gap: 1rem;
-  }
-
-  .panel {
-    border-radius: 4px;
-    border: 1px solid rgba(183, 213, 230, 0.28);
-    background: rgba(14, 27, 35, 0.92);
-    padding: 1rem 1.1rem;
-  }
-
-  .eyebrow {
-    margin: 0;
-    color: #88d2dd;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    font-size: 0.74rem;
-    font-weight: 700;
-  }
-
-  h1,
-  h2 {
-    margin: 0;
-    font-family: 'Sora', 'Space Grotesk', sans-serif;
-  }
-
-  h1 {
-    margin-top: 0.35rem;
-    font-size: clamp(1.45rem, 2.4vw, 2rem);
-  }
-
-  h2 {
-    font-size: 1.1rem;
-  }
-
-  .meta {
-    margin: 0.45rem 0 0;
-    color: #b4c8d5;
-    line-height: 1.35;
-  }
-
-  .ignore-meta {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.4rem 0.55rem;
-  }
-
-  .date-badge {
-    display: inline-flex;
-    align-items: center;
-    border: 1px solid rgba(129, 197, 221, 0.42);
-    border-radius: 3px;
-    padding: 0.12rem 0.55rem;
-    background: rgba(8, 23, 31, 0.55);
-    color: #d3e8f3;
-    font-family: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
-    font-size: 0.8rem;
-    font-weight: 600;
-    line-height: 1.3;
-  }
-
-  code {
-    color: #b8e6f1;
-  }
-
-  .actions {
-    margin-top: 0.75rem;
-    display: flex;
-    gap: 0.8rem;
-    flex-wrap: wrap;
-  }
-
-  a {
-    color: #76d6ea;
-    text-decoration: none;
-    font-weight: 600;
-  }
-
-  a:hover {
-    text-decoration: underline;
-  }
-
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.7rem;
-  }
-
-  .stats article {
-    border: 1px solid rgba(166, 209, 228, 0.2);
-    border-radius: 4px;
-    background: rgba(8, 19, 25, 0.52);
-    padding: 0.75rem;
-  }
-
-  .stats .k {
-    margin: 0;
-    color: #8fb0c2;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-weight: 700;
-  }
-
-  .stats .v {
-    margin: 0.38rem 0 0;
-    font-size: 1.02rem;
-    font-weight: 700;
-  }
-
-  .analysis-tabs-panel {
-    display: grid;
-    gap: 0.9rem;
-  }
-
-  .analysis-tabs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.45rem;
-    padding: 0.25rem;
-    border: 1px solid rgba(155, 205, 227, 0.25);
-    border-radius: 4px;
-    background: rgba(6, 17, 24, 0.55);
-    width: fit-content;
-  }
-
-  .analysis-tabs button {
-    border: 1px solid rgba(121, 170, 193, 0.26);
-    border-radius: 3px;
-    background: rgba(15, 40, 52, 0.7);
-    color: #d2e4ee;
-    padding: 0.45rem 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 0.76rem;
-    font-weight: 700;
-    cursor: pointer;
-  }
-
-  .analysis-tabs button.active {
-    border-color: rgba(124, 208, 227, 0.8);
-    background: rgba(37, 173, 196, 0.75);
-    color: #07131a;
-  }
-
-  .analysis-view {
-    min-width: 0;
-    display: grid;
-    gap: 0.65rem;
-  }
-
-  .analysis-view.keep h2 {
-    color: #87d7e8;
-  }
-
-  .analysis-view.cut h2 {
-    color: #ffb77d;
-  }
-
-  .analysis-view.add h2 {
-    color: #8ee2b7;
-  }
-
-  @media (max-width: 900px) {
-    .stats {
-      grid-template-columns: 1fr;
-    }
-  }
-</style>

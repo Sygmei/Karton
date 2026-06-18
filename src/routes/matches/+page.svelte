@@ -78,42 +78,50 @@
       checkbox.checked = input.checked;
     }
   }
+
+  const pageClass = "mx-auto grid w-[min(1180px,94vw)] gap-4 py-4 pb-12";
+  const panelClass = "rounded border border-white/10 bg-stone-900/80 p-4";
+  const inputClass = "w-full rounded border border-white/15 bg-stone-950 px-3 py-2 text-stone-100 placeholder:text-stone-600";
+  const buttonClass = "rounded bg-lime-300 px-4 py-2.5 font-black text-stone-950 disabled:opacity-50";
+  const dangerButtonClass = "rounded bg-red-300 px-3 py-2 text-sm font-bold text-stone-950";
+  const eyebrowClass = "text-xs font-extrabold uppercase tracking-widest text-lime-300";
+  const tableCellClass = "border-b border-white/10 px-3 py-2 text-left align-top";
 </script>
 
 <svelte:head>
   <title>Matcher - Karton</title>
 </svelte:head>
 
-<main class="match-stage">
-  <nav class="top-nav">
-    <a href="/">Meta Analyzer</a>
+<main class={pageClass}>
+  <nav class="flex flex-wrap items-center justify-between gap-3 text-sm text-stone-400">
+    <a class="text-lime-300 no-underline" href="/analyzer">Deck Analyzer</a>
     <span>Karton Matcher</span>
   </nav>
 
-  <section class="match-hero">
+  <section class={`${panelClass} grid gap-3 md:grid-cols-[1fr_1.2fr] md:items-end`}>
     <div>
-      <p class="eyebrow">Buyer and seller overlap</p>
-      <h1>Match cards across public lists</h1>
+      <p class={eyebrowClass}>Buyer and seller overlap</p>
+      <h1 class="mt-2 text-3xl font-black">Match cards across public lists</h1>
     </div>
-    <p>
+    <p class="text-stone-400">
       Uses saved looking-for and selling lists from Karton accounts, then ranks exact card-name
       overlaps so each user knows who to contact.
     </p>
   </section>
 
   {#if data.currentUser}
-    <section class="saved-panel">
+    <section class={`${panelClass} flex flex-wrap items-center justify-between gap-4`}>
       <div>
-        <p class="eyebrow">My saved lists</p>
-        <h2>Find people to contact</h2>
-        <p>
+        <p class={eyebrowClass}>My saved lists</p>
+        <h2 class="mt-1 text-xl font-bold">Find people to contact</h2>
+        <p class="text-stone-400">
           Uses your {savedBuyerCount} looking-for lists and {savedSellerCount} selling lists against
           all other saved user lists.
         </p>
       </div>
-      <div class="saved-actions">
+      <div>
         <form method="POST" action="?/saved" use:enhance={enhanceSubmit}>
-          <button type="submit" disabled={isSubmitting || (!savedBuyerCount && !savedSellerCount)}>
+          <button class={buttonClass} type="submit" disabled={isSubmitting || (!savedBuyerCount && !savedSellerCount)}>
             {isSubmitting ? "Matching..." : "Find people to contact"}
           </button>
         </form>
@@ -121,55 +129,56 @@
     </section>
   {/if}
 
-  <section class="add-panel" id="lists">
+  <section class={`${panelClass} grid gap-4`} id="lists">
     <div>
-      <p class="eyebrow">Saved lists</p>
-      <h2>Add a list</h2>
+      <p class={eyebrowClass}>Saved lists</p>
+      <h2 class="mt-1 text-xl font-bold">Add a list</h2>
     </div>
-    <form method="POST" action="?/addList">
-      <label>
-        <span>Type</span>
-        <select name="kind">
+    <form class="grid gap-3 md:grid-cols-[180px_1fr_2fr_auto] md:items-end" method="POST" action="?/addList">
+      <label class="grid gap-1">
+        <span class="text-sm text-stone-300">Type</span>
+        <select class={inputClass} name="kind">
           <option value="buyer">I'm looking for</option>
           <option value="seller">I'm selling</option>
         </select>
       </label>
-      <label>
-        <span>Label</span>
-        <input name="label" placeholder="Optional" />
+      <label class="grid gap-1">
+        <span class="text-sm text-stone-300">Label</span>
+        <input class={inputClass} name="label" placeholder="Optional" />
       </label>
-      <label class="url-field">
-        <span>URL</span>
-        <input name="url" placeholder="Moxfield, Archidekt, Cardmarket, Mythic Tools" required />
+      <label class="grid gap-1">
+        <span class="text-sm text-stone-300">URL</span>
+        <input class={inputClass} name="url" placeholder="Moxfield, Archidekt, Cardmarket, Mythic Tools" required />
       </label>
-      <button type="submit">Add list</button>
+      <button class={buttonClass} type="submit">Add list</button>
     </form>
   </section>
 
-  <section class="list-columns">
-    <div>
-      <h2>I'm looking for</h2>
+  <section class="grid gap-4 md:grid-cols-2">
+    <div class={`${panelClass} grid gap-3 content-start`}>
+      <h2 class="text-xl font-bold">I'm looking for</h2>
       {@render ListColumn(buyerLists)}
     </div>
-    <div>
-      <h2>I'm selling</h2>
+    <div class={`${panelClass} grid gap-3 content-start`}>
+      <h2 class="text-xl font-bold">I'm selling</h2>
       {@render ListColumn(sellerLists)}
     </div>
   </section>
 
   {#if isAdmin}
-    <section class="admin-match-panel">
-      <div class="admin-panel-head">
+    <section class={`${panelClass} grid gap-4`}>
+      <div>
         <div>
-          <p class="eyebrow">Admin compute</p>
-          <h2>Run a match for selected people</h2>
-          <p>Select accounts, then compute buyer and seller overlap only inside that set.</p>
+          <p class={eyebrowClass}>Admin compute</p>
+          <h2 class="mt-1 text-xl font-bold">Run a match for selected people</h2>
+          <p class="text-stone-400">Select accounts, then compute buyer and seller overlap only inside that set.</p>
         </div>
       </div>
-      <form method="POST" action="?/adminSet" use:enhance={enhanceSubmit}>
-        <div class="admin-controls">
-          <label class="select-all-row">
+      <form class="grid gap-4" method="POST" action="?/adminSet" use:enhance={enhanceSubmit}>
+        <div class="flex flex-wrap items-center gap-4">
+          <label class="flex items-center gap-2 text-sm text-stone-300">
             <input
+              class="size-4 accent-lime-300"
               type="checkbox"
               on:change={toggleAllPeople}
               checked={adminUsers.length > 0 && selectedUserIds.length === adminUsers.length}
@@ -177,9 +186,9 @@
             <span>Select all</span>
           </label>
 
-          <label class="focus-field">
-            <span>Search matches as</span>
-            <select name="focusUserId">
+          <label class="grid min-w-64 gap-1">
+            <span class="text-sm text-stone-300">Search matches as</span>
+            <select class={inputClass} name="focusUserId">
               <option value="" selected={!adminFocusUserId}>Group overlap</option>
               {#each adminUsers as user}
                 <option value={user.id} selected={adminFocusUserId === user.id}>
@@ -190,19 +199,19 @@
           </label>
         </div>
 
-        <div class="people-grid">
+        <div class="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
           {#each adminUsers as user}
-            <label>
-              <input type="checkbox" name="userIds" value={user.id} checked={selectedUserIds.includes(user.id)} />
-              <span>
+            <label class="flex items-center gap-3 rounded border border-white/10 bg-stone-950/60 p-3">
+              <input class="size-4 accent-lime-300" type="checkbox" name="userIds" value={user.id} checked={selectedUserIds.includes(user.id)} />
+              <span class="grid">
                 <strong>{user.displayName || user.username}</strong>
-                <small>{user.lists.buyer} looking / {user.lists.seller} selling</small>
+                <small class="text-stone-400">{user.lists.buyer} looking / {user.lists.seller} selling</small>
               </span>
             </label>
           {/each}
         </div>
-        <div class="form-actions">
-          <button type="submit" disabled={isSubmitting || adminUsers.length < 2}>
+        <div>
+          <button class={buttonClass} type="submit" disabled={isSubmitting || adminUsers.length < 2}>
             {isSubmitting ? "Matching..." : "Compute selected people"}
           </button>
         </div>
@@ -211,20 +220,20 @@
   {/if}
 
   {#if form?.error}
-    <section class="notice error-panel">
-      <p class="error">{form.error}</p>
+    <section class={`${panelClass} text-red-200`}>
+      <p>{form.error}</p>
       {#if form?.traceId}
-        <p class="error-trace">Trace ID: <code>{form.traceId}</code></p>
+        <p class="mt-2 text-sm text-stone-400">Trace ID: <code class="rounded bg-stone-950 px-2 py-1 text-lime-300">{form.traceId}</code></p>
       {/if}
     </section>
   {:else if form?.success}
-    <section class="notice success-panel">
-      <p class="success">{form.success}</p>
+    <section class={`${panelClass} text-lime-300`}>
+      <p>{form.success}</p>
     </section>
   {/if}
 
   {#if accountOutput}
-    <section class="contact-results">
+    <section class="grid gap-4">
       {@render MatchResult("Sellers to contact", accountOutput.sellersToContact, "No sellers currently match your looking-for lists.")}
       {@render MatchResult("Buyers to contact", accountOutput.buyersToContact, "No buyers currently match your selling lists.")}
     </section>
@@ -235,7 +244,7 @@
   {/if}
 
   {#if adminContactOutput}
-    <section class="contact-results">
+    <section class="grid gap-4">
       {@render MatchResult(`Sellers to contact for ${adminFocusUser?.displayName || adminFocusUser?.username || "selected user"}`, adminContactOutput.sellersToContact, "No sellers currently match this user's looking-for lists.")}
       {@render MatchResult(`Buyers to contact for ${adminFocusUser?.displayName || adminFocusUser?.username || "selected user"}`, adminContactOutput.buyersToContact, "No buyers currently match this user's selling lists.")}
     </section>
@@ -245,65 +254,65 @@
 {#snippet ListColumn(lists: Array<{ id: string; label: string | null; url: string }>)}
   {#if lists.length}
     {#each lists as list}
-      <article class="saved-list-row">
-        <a class="saved-list-link" href={list.url} target="_blank" rel="noreferrer">
-          <strong>{list.label || list.url}</strong>
-          <span>{list.url}</span>
+      <article class="flex items-center justify-between gap-3 rounded border border-white/10 bg-stone-950/60 p-3">
+        <a class="grid min-w-0 gap-1 text-stone-100 no-underline" href={list.url} target="_blank" rel="noreferrer">
+          <strong class="truncate">{list.label || list.url}</strong>
+          <span class="truncate text-sm text-stone-400">{list.url}</span>
         </a>
         <form method="POST" action="?/deleteList">
           <input type="hidden" name="listId" value={list.id} />
-          <button class="danger" type="submit">Delete</button>
+          <button class={dangerButtonClass} type="submit">Delete</button>
         </form>
       </article>
     {/each}
   {:else}
-    <p class="empty">No lists yet.</p>
+    <p class="text-sm text-stone-400">No lists yet.</p>
   {/if}
 {/snippet}
 
 {#snippet MatchListItems(items: Array<{ listName: string; url: string; quantity: number }>)}
-  <div class="match-list-links">
+  <div class="flex flex-wrap gap-2">
     {#each items as item}
-      <a href={item.url} target="_blank" rel="noreferrer">{item.listName} ({item.quantity})</a>
+      <a class="rounded bg-stone-950 px-2 py-1 text-xs text-lime-300 no-underline hover:underline" href={item.url} target="_blank" rel="noreferrer">{item.listName} ({item.quantity})</a>
     {/each}
   </div>
 {/snippet}
 
 {#snippet CardListResult(title: string, result: CardListMatchResult, empty: string)}
-  <section class="summary-band">
-    <article>
-      <span>Matches</span>
-      <strong>{result.totals.matchedCards}</strong>
-      <small>{result.totals.matchedQuantity} total copies</small>
+  <section class="grid gap-3 md:grid-cols-3">
+    <article class={`${panelClass} grid gap-1`}>
+      <span class="text-xs uppercase tracking-wider text-stone-400">Matches</span>
+      <strong class="text-2xl text-lime-300">{result.totals.matchedCards}</strong>
+      <small class="text-stone-400">{result.totals.matchedQuantity} total copies</small>
     </article>
-    <article>
-      <span>Buyer demand</span>
-      <strong>{result.totals.uniqueBuyerCards}</strong>
-      <small>{result.totals.buyerCards} copies across {result.totals.buyerLists} lists</small>
+    <article class={`${panelClass} grid gap-1`}>
+      <span class="text-xs uppercase tracking-wider text-stone-400">Buyer demand</span>
+      <strong class="text-2xl text-lime-300">{result.totals.uniqueBuyerCards}</strong>
+      <small class="text-stone-400">{result.totals.buyerCards} copies across {result.totals.buyerLists} lists</small>
     </article>
-    <article>
-      <span>Seller supply</span>
-      <strong>{result.totals.uniqueSellerCards}</strong>
-      <small>{result.totals.sellerCards} copies across {result.totals.sellerLists} lists</small>
+    <article class={`${panelClass} grid gap-1`}>
+      <span class="text-xs uppercase tracking-wider text-stone-400">Seller supply</span>
+      <strong class="text-2xl text-lime-300">{result.totals.uniqueSellerCards}</strong>
+      <small class="text-stone-400">{result.totals.sellerCards} copies across {result.totals.sellerLists} lists</small>
     </article>
   </section>
 
-  <section class="loaded-lists">
-    <div>
-      <h2>Buyers</h2>
+  <section class="grid gap-4 md:grid-cols-2">
+    <div class={`${panelClass} grid gap-2 content-start`}>
+      <h2 class="text-xl font-bold">Buyers</h2>
       {#each result.buyers as list}
-        <a href={list.url} target="_blank" rel="noreferrer">
-          <span>{list.name}</span>
-          <small>{sourceLabel(list.source)} - {Object.keys(list.cards).length} cards</small>
+        <a class="grid rounded border border-white/10 bg-stone-950/60 p-3 text-stone-100 no-underline" href={list.url} target="_blank" rel="noreferrer">
+          <span class="truncate">{list.name}</span>
+          <small class="text-stone-400">{sourceLabel(list.source)} - {Object.keys(list.cards).length} cards</small>
         </a>
       {/each}
     </div>
-    <div>
-      <h2>Sellers</h2>
+    <div class={`${panelClass} grid gap-2 content-start`}>
+      <h2 class="text-xl font-bold">Sellers</h2>
       {#each result.sellers as list}
-        <a href={list.url} target="_blank" rel="noreferrer">
-          <span>{list.name}</span>
-          <small>{sourceLabel(list.source)} - {Object.keys(list.cards).length} cards</small>
+        <a class="grid rounded border border-white/10 bg-stone-950/60 p-3 text-stone-100 no-underline" href={list.url} target="_blank" rel="noreferrer">
+          <span class="truncate">{list.name}</span>
+          <small class="text-stone-400">{sourceLabel(list.source)} - {Object.keys(list.cards).length} cards</small>
         </a>
       {/each}
     </div>
@@ -313,526 +322,40 @@
 {/snippet}
 
 {#snippet MatchResult(title: string, result: CardListMatchResult, empty: string)}
-  <section class="matches-table">
-    <div class="table-head">
-      <h2>{title}</h2>
-      <span>{result.matches.length} rows</span>
+  <section class={`${panelClass} grid gap-3`}>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h2 class="text-xl font-bold">{title}</h2>
+      <span class="rounded bg-stone-950 px-3 py-1 text-sm text-stone-300">{result.matches.length} rows</span>
     </div>
 
     {#if result.matches.length}
-      <div class="table-wrap">
-        <table>
-          <thead>
+      <div class="overflow-auto rounded border border-white/10 bg-stone-950/50">
+        <table class="w-full min-w-[760px] border-collapse text-sm">
+          <thead class="bg-stone-900 text-xs uppercase tracking-wider text-stone-400">
             <tr>
-              <th>Card</th>
-              <th>Matched</th>
-              <th>Buyers</th>
-              <th>Sellers</th>
+              <th class={tableCellClass}>Card</th>
+              <th class={tableCellClass}>Matched</th>
+              <th class={tableCellClass}>Buyers</th>
+              <th class={tableCellClass}>Sellers</th>
             </tr>
           </thead>
           <tbody>
             {#each result.matches as match}
-              <tr>
-                <td>
+              <tr class="hover:bg-white/5">
+                <td class={tableCellClass}>
                   <strong>{match.card}</strong>
-                  <small>{match.buyerQuantity} wanted / {match.sellerQuantity} available</small>
+                  <small class="block text-stone-400">{match.buyerQuantity} wanted / {match.sellerQuantity} available</small>
                 </td>
-                <td>{match.matchedQuantity}</td>
-                <td title={listNames(match.buyers)}>{@render MatchListItems(match.buyers)}</td>
-                <td title={listNames(match.sellers)}>{@render MatchListItems(match.sellers)}</td>
+                <td class={tableCellClass}>{match.matchedQuantity}</td>
+                <td class={tableCellClass} title={listNames(match.buyers)}>{@render MatchListItems(match.buyers)}</td>
+                <td class={tableCellClass} title={listNames(match.sellers)}>{@render MatchListItems(match.sellers)}</td>
               </tr>
             {/each}
           </tbody>
         </table>
       </div>
     {:else}
-      <p class="empty">{empty}</p>
+      <p class="text-sm text-stone-400">{empty}</p>
     {/if}
   </section>
 {/snippet}
-
-<style>
-  :global(body) {
-    margin: 0;
-    min-height: 100vh;
-    background: #0d1114;
-    color: #edf3ef;
-    font-family: "Avenir Next", "Segoe UI", sans-serif;
-  }
-
-  .match-stage {
-    width: min(1180px, 94vw);
-    margin: 0 auto;
-    padding: 1rem 0 3rem;
-    display: grid;
-    gap: 1rem;
-  }
-
-  .top-nav {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-    color: #aabbb8;
-    font-size: 0.86rem;
-  }
-
-  .top-nav a,
-  a {
-    color: #74d3c0;
-    text-decoration: none;
-  }
-
-  .top-nav a:hover,
-  a:hover {
-    text-decoration: underline;
-  }
-
-  .match-hero,
-  .saved-panel,
-  .add-panel,
-  .list-columns > div,
-  .admin-match-panel,
-  .matches-table,
-  .loaded-lists,
-  .notice {
-    border: 1px solid rgba(181, 211, 203, 0.18);
-    background: rgba(13, 21, 23, 0.84);
-    box-shadow: 0 22px 60px rgba(0, 0, 0, 0.28);
-  }
-
-  .match-hero {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(260px, 460px);
-    gap: 1.5rem;
-    align-items: end;
-    padding: 1.4rem;
-  }
-
-  .saved-panel {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    align-items: center;
-    padding: 1rem;
-  }
-
-  .saved-panel h2 {
-    font-size: 1.2rem;
-  }
-
-  .saved-panel p {
-    color: #b8c9c5;
-    margin-top: 0.35rem;
-  }
-
-  .saved-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-    flex-wrap: wrap;
-  }
-
-  .add-panel {
-    display: grid;
-    gap: 0.8rem;
-    padding: 1rem;
-  }
-
-  .add-panel form {
-    display: flex;
-    align-items: end;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-  }
-
-  label {
-    display: grid;
-    gap: 0.3rem;
-  }
-
-  label span {
-    color: #d9e5e0;
-    font-weight: 800;
-  }
-
-  .url-field {
-    flex: 1 1 320px;
-  }
-
-  input,
-  select {
-    border: 1px solid rgba(166, 204, 195, 0.28);
-    background: rgba(5, 10, 12, 0.64);
-    color: #edf3ef;
-    border-radius: 3px;
-    padding: 0.65rem;
-    font: inherit;
-  }
-
-  .list-columns {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
-  }
-
-  .list-columns > div {
-    display: grid;
-    align-content: start;
-    gap: 0.75rem;
-    padding: 1rem;
-  }
-
-  .saved-list-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 0.75rem;
-    align-items: center;
-    padding: 0.7rem;
-    border: 1px solid rgba(181, 211, 203, 0.14);
-    background: rgba(10, 18, 20, 0.92);
-  }
-
-  .saved-list-link {
-    min-width: 0;
-    display: grid;
-    gap: 0.2rem;
-    color: inherit;
-    text-decoration: none;
-  }
-
-  .saved-list-link span {
-    overflow-wrap: anywhere;
-    color: #aabbb8;
-  }
-
-  .saved-list-link:hover strong,
-  .saved-list-link:hover span {
-    text-decoration: underline;
-  }
-
-  .contact-results {
-    display: grid;
-    gap: 1rem;
-  }
-
-  .admin-match-panel {
-    display: grid;
-    gap: 1rem;
-    padding: 1rem;
-  }
-
-  .admin-panel-head {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    align-items: end;
-  }
-
-  .admin-panel-head p:not(.eyebrow) {
-    color: #b8c9c5;
-    margin-top: 0.35rem;
-  }
-
-  .admin-match-panel form {
-    display: grid;
-    gap: 1rem;
-  }
-
-  .admin-controls {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: end;
-    justify-content: space-between;
-    gap: 0.8rem;
-  }
-
-  .select-all-row {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.55rem;
-    min-height: 2.55rem;
-    padding: 0.55rem 0.7rem;
-    border: 1px solid rgba(181, 211, 203, 0.18);
-    background: rgba(10, 18, 20, 0.92);
-    color: #edf3ef;
-    font-weight: 800;
-  }
-
-  .select-all-row input,
-  .people-grid input {
-    width: 1rem;
-    height: 1rem;
-    flex: 0 0 auto;
-    accent-color: #74d3c0;
-  }
-
-  .focus-field {
-    display: grid;
-    gap: 0.35rem;
-    min-width: min(100%, 320px);
-  }
-
-  .focus-field span {
-    color: #aabbb8;
-    font-size: 0.78rem;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .focus-field select {
-    min-height: 2.55rem;
-    border: 1px solid rgba(166, 204, 195, 0.28);
-    border-radius: 3px;
-    background: rgba(5, 10, 12, 0.64);
-    color: #edf3ef;
-    font: inherit;
-    padding: 0.55rem 0.7rem;
-  }
-
-  .people-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 0.6rem;
-  }
-
-  .people-grid label {
-    display: flex;
-    gap: 0.65rem;
-    align-items: center;
-    min-width: 0;
-    padding: 0.7rem;
-    border: 1px solid rgba(181, 211, 203, 0.18);
-    background: rgba(10, 18, 20, 0.92);
-  }
-
-  .people-grid span {
-    display: grid;
-    min-width: 0;
-  }
-
-  .people-grid strong,
-  .people-grid small {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .people-grid small {
-    color: #aabbb8;
-  }
-
-  .eyebrow {
-    margin: 0 0 0.45rem;
-    color: #f3bd70;
-    font-size: 0.76rem;
-    font-weight: 800;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
-
-  h1,
-  h2,
-  p {
-    margin: 0;
-  }
-
-  h1 {
-    font-size: clamp(2rem, 4vw, 3.35rem);
-    line-height: 1;
-  }
-
-  .match-hero > p {
-    color: #b8c9c5;
-    line-height: 1.5;
-  }
-
-  .form-actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.8rem;
-  }
-
-  button {
-    border: 0;
-    border-radius: 3px;
-    padding: 0.72rem 1rem;
-    color: #071111;
-    background: #74d3c0;
-    font: inherit;
-    font-weight: 900;
-    cursor: pointer;
-  }
-
-  button:disabled {
-    cursor: wait;
-    opacity: 0.72;
-  }
-
-  button.danger {
-    background: rgba(255, 128, 112, 0.18);
-    color: #ffb1a6;
-  }
-
-  .error {
-    color: #ffb1a6;
-    font-weight: 800;
-  }
-
-  .success {
-    color: #74d3c0;
-    font-weight: 800;
-  }
-
-  .error-trace {
-    color: #aabbb8;
-    font-size: 0.86rem;
-  }
-
-  .error-trace code {
-    color: #edf3ef;
-  }
-
-  .summary-band {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1px;
-    overflow: hidden;
-    border: 1px solid rgba(181, 211, 203, 0.18);
-    background: rgba(181, 211, 203, 0.18);
-  }
-
-  .summary-band article {
-    display: grid;
-    gap: 0.35rem;
-    padding: 1rem;
-    background: rgba(10, 18, 20, 0.92);
-  }
-
-  .summary-band span,
-  .summary-band small {
-    color: #aabbb8;
-  }
-
-  .summary-band strong {
-    font-size: 2rem;
-    line-height: 1;
-  }
-
-  .loaded-lists {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1px;
-    padding: 0;
-    overflow: hidden;
-    background: rgba(181, 211, 203, 0.18);
-  }
-
-  .loaded-lists > div {
-    display: grid;
-    align-content: start;
-    gap: 0.5rem;
-    padding: 1rem;
-    background: rgba(13, 21, 23, 0.92);
-  }
-
-  .loaded-lists h2,
-  .matches-table h2 {
-    font-size: 1rem;
-  }
-
-  .loaded-lists a {
-    display: grid;
-    gap: 0.15rem;
-    padding: 0.55rem 0;
-    border-top: 1px solid rgba(181, 211, 203, 0.12);
-  }
-
-  .loaded-lists small {
-    color: #9fb1ad;
-  }
-
-  .matches-table {
-    padding: 1rem;
-  }
-
-  .table-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 1rem;
-    margin-bottom: 0.8rem;
-  }
-
-  .table-head span,
-  td small {
-    color: #aabbb8;
-  }
-
-  .table-wrap {
-    overflow-x: auto;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 760px;
-  }
-
-  th,
-  td {
-    padding: 0.7rem;
-    border-top: 1px solid rgba(181, 211, 203, 0.14);
-    text-align: left;
-    vertical-align: top;
-  }
-
-  th {
-    color: #f3bd70;
-    font-size: 0.76rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  td:nth-child(2) {
-    color: #74d3c0;
-    font-weight: 900;
-    font-size: 1.1rem;
-  }
-
-  .match-list-links {
-    display: grid;
-    gap: 0.25rem;
-  }
-
-  .match-list-links a {
-    overflow-wrap: anywhere;
-    color: #74d3c0;
-  }
-
-  td strong,
-  td small {
-    display: block;
-  }
-
-  .empty {
-    color: #b8c9c5;
-  }
-
-  @media (max-width: 780px) {
-    .match-hero,
-    .saved-panel,
-    .list-columns,
-    .admin-panel-head,
-    .summary-band,
-    .loaded-lists {
-      grid-template-columns: 1fr;
-    }
-
-    .match-hero {
-      padding: 1rem;
-    }
-  }
-</style>

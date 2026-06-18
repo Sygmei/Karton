@@ -12,9 +12,7 @@ export const mtgtop8Commanders = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },
-  (table) => ({
-    commanderUrlUnique: uniqueIndex('mtgtop8_commanders_commander_url_unique').on(table.commanderUrl)
-  })
+  (table) => [uniqueIndex('mtgtop8_commanders_commander_url_unique').on(table.commanderUrl)]
 );
 
 export const mtgtop8Decks = pgTable(
@@ -38,11 +36,11 @@ export const mtgtop8Decks = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },
-  (table) => ({
-    deckUrlUnique: uniqueIndex('mtgtop8_decks_deck_url_unique').on(table.deckUrl),
-    commanderDateIdx: index('idx_mtgtop8_decks_commander_date').on(table.commanderSlug, table.eventDate),
-    commanderDeckUrlIdx: index('idx_mtgtop8_decks_commander_deck_url').on(table.commanderSlug, table.deckUrl)
-  })
+  (table) => [
+    uniqueIndex('mtgtop8_decks_deck_url_unique').on(table.deckUrl),
+    index('idx_mtgtop8_decks_commander_date').on(table.commanderSlug, table.eventDate),
+    index('idx_mtgtop8_decks_commander_deck_url').on(table.commanderSlug, table.deckUrl)
+  ]
 );
 
 export const analysisRuns = pgTable(
@@ -69,11 +67,11 @@ export const analysisRuns = pgTable(
       .notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
   },
-  (table) => ({
-    shareIdUnique: uniqueIndex('analysis_runs_share_id_unique').on(table.shareId),
-    userCreatedAtIdx: index('idx_analysis_runs_user_created_at').on(table.userId, table.createdAt),
-    createdAtIdx: index('idx_analysis_runs_created_at').on(table.createdAt)
-  })
+  (table) => [
+    uniqueIndex('analysis_runs_share_id_unique').on(table.shareId),
+    index('idx_analysis_runs_user_created_at').on(table.userId, table.createdAt),
+    index('idx_analysis_runs_created_at').on(table.createdAt)
+  ]
 );
 
 export const duelCommanderBanlistCache = pgTable(
@@ -86,9 +84,7 @@ export const duelCommanderBanlistCache = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },
-  (table) => ({
-    fetchedAtIdx: index('idx_duel_commander_banlist_cache_fetched_at').on(table.fetchedAt)
-  })
+  (table) => [index('idx_duel_commander_banlist_cache_fetched_at').on(table.fetchedAt)]
 );
 
 export const users = pgTable(
@@ -102,9 +98,7 @@ export const users = pgTable(
     displayName: text('display_name'),
     createdByUserId: text('created_by_user_id')
   },
-  (table) => ({
-    usernameUnique: uniqueIndex('users_username_unique').on(table.username)
-  })
+  (table) => [uniqueIndex('users_username_unique').on(table.username)]
 );
 
 export const userLoginLinks = pgTable(
@@ -119,10 +113,10 @@ export const userLoginLinks = pgTable(
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     consumedAt: timestamp('consumed_at', { withTimezone: true })
   },
-  (table) => ({
-    tokenUnique: uniqueIndex('user_login_links_token_unique').on(table.token),
-    userIdx: index('idx_user_login_links_user_id').on(table.userId)
-  })
+  (table) => [
+    uniqueIndex('user_login_links_token_unique').on(table.token),
+    index('idx_user_login_links_user_id').on(table.userId)
+  ]
 );
 
 export const userSessions = pgTable(
@@ -136,10 +130,10 @@ export const userSessions = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     expiresAt: timestamp('expires_at', { withTimezone: true })
   },
-  (table) => ({
-    tokenUnique: uniqueIndex('user_sessions_token_unique').on(table.sessionToken),
-    userIdx: index('idx_user_sessions_user_id').on(table.userId)
-  })
+  (table) => [
+    uniqueIndex('user_sessions_token_unique').on(table.sessionToken),
+    index('idx_user_sessions_user_id').on(table.userId)
+  ]
 );
 
 export const userCardLists = pgTable(
@@ -156,8 +150,8 @@ export const userCardLists = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },
-  (table) => ({
-    userKindIdx: index('idx_user_card_lists_user_kind').on(table.userId, table.kind),
-    kindIdx: index('idx_user_card_lists_kind').on(table.kind)
-  })
+  (table) => [
+    index('idx_user_card_lists_user_kind').on(table.userId, table.kind),
+    index('idx_user_card_lists_kind').on(table.kind)
+  ]
 );

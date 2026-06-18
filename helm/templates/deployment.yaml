@@ -66,14 +66,6 @@ spec:
               value: {{ .Values.otel.headers | quote }}
             - name: OTEL_RESOURCE_ATTRIBUTES
               value: {{ .Values.otel.resourceAttributes | quote }}
-            - name: PUBLIC_FARO_ENABLED
-              value: {{ .Values.faro.enabled | quote }}
-            - name: PUBLIC_FARO_URL
-              value: {{ .Values.faro.endpoint | quote }}
-            - name: PUBLIC_FARO_APP_NAME
-              value: {{ .Values.faro.appName | quote }}
-            - name: PUBLIC_FARO_APP_VERSION
-              value: {{ .Values.faro.appVersion | default .Values.version | quote }}
             - name: DATABASE_URL_RW
               valueFrom:
                 secretKeyRef:
