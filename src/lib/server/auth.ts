@@ -304,6 +304,43 @@ export async function consumeLoginToken(token: string): Promise<{ user: AppUser;
   return { user, sessionToken };
 }
 
+export async function previewLoginToken(token: string): Promise<{ user: AppUser; expiresAt: Date }> {
+  const trimmed = String(token || '').trim();
+  if (!trimmed) {
+    throw new AppError({
+      userFacingError: 'Missing login token.',
+      adminFacingError: 'Empty login token.',
+      errorTypeName: 'LoginTokenMissingError',
+      httpStatusCode: 400
+    });
+  }
+
+  const now = new Date();
+  const [row] = await getWriteDb()
+    .select({
+      link: userLoginLinks,
+      user: users
+    })
+    .from(userLoginLinks)
+    .innerJoin(users, eq(users.id, userLoginLinks.userId))
+    .where(and(eq(userLoginLinks.token, trimmed), isNull(userLoginLinks.consumedAt), gt(userLoginLinks.expiresAt, now)))
+    .limit(1);
+
+  if (!row) {
+    throw new AppError({
+      userFacingError: 'This login link is invalid or expired.',
+      adminFacingError: 'Invalid or expired login token preview.',
+      errorTypeName: 'LoginTokenInvalidError',
+      httpStatusCode: 401
+    });
+  }
+
+  return {
+    user: rowToUser(row.user),
+    expiresAt: row.link.expiresAt
+  };
+}
+
 export async function resolveSessionUser(cookies: Cookies): Promise<AppUser | null> {
   const sessionToken = cookies.get(SESSION_COOKIE_NAME)?.trim();
   if (!sessionToken) {
