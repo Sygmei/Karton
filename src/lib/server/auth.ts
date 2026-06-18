@@ -310,14 +310,17 @@ export async function resolveSessionUser(cookies: Cookies): Promise<AppUser | nu
     return null;
   }
   const now = new Date();
-  const row = await getWriteDb().query.userSessions.findFirst({
-    where: and(eq(userSessions.sessionToken, sessionToken), or(isNull(userSessions.expiresAt), gt(userSessions.expiresAt, now)))
-  });
+  const [row] = await getWriteDb()
+    .select({ user: users })
+    .from(userSessions)
+    .innerJoin(users, eq(users.id, userSessions.userId))
+    .where(and(eq(userSessions.sessionToken, sessionToken), or(isNull(userSessions.expiresAt), gt(userSessions.expiresAt, now))))
+    .limit(1);
   if (!row) {
     cookies.delete(SESSION_COOKIE_NAME, { path: '/' });
     return null;
   }
-  return await findUserById(row.userId);
+  return rowToUser(row.user);
 }
 
 export async function logout(cookies: Cookies): Promise<void> {

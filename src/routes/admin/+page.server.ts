@@ -11,10 +11,9 @@ export const load: PageServerLoad = async ({ locals }) => {
     throw redirect(303, '/');
   }
   const auth = ensureAdmin(locals.user);
-  const users = await listUsers();
   return {
     currentUser: userToJson(auth),
-    users: users.map(userToJson)
+    users: listUsers().then((users) => users.map(userToJson))
   };
 };
 

@@ -17,10 +17,12 @@
     };
   };
 
+  type SavedList = { id: string; kind: "buyer" | "seller"; label: string | null; url: string };
+
   export let data: {
     currentUser?: CurrentUser | null;
-    savedLists?: Array<{ id: string; kind: "buyer" | "seller"; label: string | null; url: string }>;
-    adminUsers?: AdminUser[];
+    savedLists?: SavedList[] | Promise<SavedList[]>;
+    adminUsers?: AdminUser[] | Promise<AdminUser[]>;
   };
 
   export let form:
@@ -43,13 +45,9 @@
   $: adminContactOutput = form?.adminContactOutput;
   $: selectedUserIds = form?.selectedUserIds ?? [];
   $: adminFocusUserId = form?.adminFocusUserId ?? "";
-  $: savedBuyerCount = data.savedLists?.filter((list) => list.kind === "buyer").length ?? 0;
-  $: savedSellerCount = data.savedLists?.filter((list) => list.kind === "seller").length ?? 0;
-  $: buyerLists = data.savedLists?.filter((list) => list.kind === "buyer") ?? [];
-  $: sellerLists = data.savedLists?.filter((list) => list.kind === "seller") ?? [];
-  $: adminUsers = data.adminUsers ?? [];
   $: isAdmin = data.currentUser?.role === "admin" || data.currentUser?.role === "superadmin";
-  $: adminFocusUser = adminUsers.find((user) => user.id === adminFocusUserId);
+  $: savedListsPromise = Promise.resolve(data.savedLists ?? []);
+  $: adminUsersPromise = Promise.resolve(data.adminUsers ?? []);
 
   const enhanceSubmit = () => {
     isSubmitting = true;
@@ -86,6 +84,7 @@
   const dangerButtonClass = "rounded bg-red-300 px-3 py-2 text-sm font-bold text-stone-950";
   const eyebrowClass = "text-xs font-extrabold uppercase tracking-widest text-lime-300";
   const tableCellClass = "border-b border-white/10 px-3 py-2 text-left align-top";
+  const skeletonBlockClass = "animate-pulse rounded bg-stone-950/80";
 </script>
 
 <svelte:head>
@@ -110,23 +109,41 @@
   </section>
 
   {#if data.currentUser}
-    <section class={`${panelClass} flex flex-wrap items-center justify-between gap-4`}>
-      <div>
-        <p class={eyebrowClass}>My saved lists</p>
-        <h2 class="mt-1 text-xl font-bold">Find people to contact</h2>
-        <p class="text-stone-400">
-          Uses your {savedBuyerCount} looking-for lists and {savedSellerCount} selling lists against
-          all other saved user lists.
-        </p>
-      </div>
-      <div>
-        <form method="POST" action="?/saved" use:enhance={enhanceSubmit}>
-          <button class={buttonClass} type="submit" disabled={isSubmitting || (!savedBuyerCount && !savedSellerCount)}>
-            {isSubmitting ? "Matching..." : "Find people to contact"}
-          </button>
-        </form>
-      </div>
-    </section>
+    {#await savedListsPromise}
+      <section class={`${panelClass} flex flex-wrap items-center justify-between gap-4`}>
+        <div>
+          <p class={eyebrowClass}>My saved lists</p>
+          <h2 class="mt-1 text-xl font-bold">Find people to contact</h2>
+          <div class="mt-2 grid gap-2" aria-hidden="true">
+            <span class={`${skeletonBlockClass} h-4 w-72 max-w-full`}></span>
+            <span class={`${skeletonBlockClass} h-4 w-56 max-w-full`}></span>
+          </div>
+        </div>
+        <span class={`${skeletonBlockClass} h-11 w-52`} aria-hidden="true"></span>
+      </section>
+    {:then savedLists}
+      {@const savedBuyerCount = savedLists.filter((list) => list.kind === "buyer").length}
+      {@const savedSellerCount = savedLists.filter((list) => list.kind === "seller").length}
+      <section class={`${panelClass} flex flex-wrap items-center justify-between gap-4`}>
+        <div>
+          <p class={eyebrowClass}>My saved lists</p>
+          <h2 class="mt-1 text-xl font-bold">Find people to contact</h2>
+          <p class="text-stone-400">
+            Uses your {savedBuyerCount} looking-for lists and {savedSellerCount} selling lists against
+            all other saved user lists.
+          </p>
+        </div>
+        <div>
+          <form method="POST" action="?/saved" use:enhance={enhanceSubmit}>
+            <button class={buttonClass} type="submit" disabled={isSubmitting || (!savedBuyerCount && !savedSellerCount)}>
+              {isSubmitting ? "Matching..." : "Find people to contact"}
+            </button>
+          </form>
+        </div>
+      </section>
+    {:catch}
+      <section class={`${panelClass} text-red-200`}>Could not load saved lists.</section>
+    {/await}
   {/if}
 
   <section class={`${panelClass} grid gap-4`} id="lists">
@@ -154,69 +171,117 @@
     </form>
   </section>
 
-  <section class="grid gap-4 md:grid-cols-2">
-    <div class={`${panelClass} grid gap-3 content-start`}>
-      <h2 class="text-xl font-bold">I'm looking for</h2>
-      {@render ListColumn(buyerLists)}
-    </div>
-    <div class={`${panelClass} grid gap-3 content-start`}>
-      <h2 class="text-xl font-bold">I'm selling</h2>
-      {@render ListColumn(sellerLists)}
-    </div>
-  </section>
+  {#await savedListsPromise}
+    <section class="grid gap-4 md:grid-cols-2">
+      <div class={`${panelClass} grid gap-3 content-start`}>
+        <h2 class="text-xl font-bold">I'm looking for</h2>
+        {@render ListSkeleton()}
+      </div>
+      <div class={`${panelClass} grid gap-3 content-start`}>
+        <h2 class="text-xl font-bold">I'm selling</h2>
+        {@render ListSkeleton()}
+      </div>
+    </section>
+  {:then savedLists}
+    {@const buyerLists = savedLists.filter((list) => list.kind === "buyer")}
+    {@const sellerLists = savedLists.filter((list) => list.kind === "seller")}
+    <section class="grid gap-4 md:grid-cols-2">
+      <div class={`${panelClass} grid gap-3 content-start`}>
+        <h2 class="text-xl font-bold">I'm looking for</h2>
+        {@render ListColumn(buyerLists)}
+      </div>
+      <div class={`${panelClass} grid gap-3 content-start`}>
+        <h2 class="text-xl font-bold">I'm selling</h2>
+        {@render ListColumn(sellerLists)}
+      </div>
+    </section>
+  {:catch}
+    <section class={`${panelClass} text-red-200`}>Could not load saved lists.</section>
+  {/await}
 
   {#if isAdmin}
-    <section class={`${panelClass} grid gap-4`}>
-      <div>
+    {#await adminUsersPromise}
+      <section class={`${panelClass} grid gap-4`}>
         <div>
           <p class={eyebrowClass}>Admin compute</p>
           <h2 class="mt-1 text-xl font-bold">Run a match for selected people</h2>
-          <p class="text-stone-400">Select accounts, then compute buyer and seller overlap only inside that set.</p>
+          <div class="mt-2 grid gap-2" aria-hidden="true">
+            <span class={`${skeletonBlockClass} h-4 w-80 max-w-full`}></span>
+            <span class={`${skeletonBlockClass} h-4 w-60 max-w-full`}></span>
+          </div>
         </div>
-      </div>
-      <form class="grid gap-4" method="POST" action="?/adminSet" use:enhance={enhanceSubmit}>
-        <div class="flex flex-wrap items-center gap-4">
-          <label class="flex items-center gap-2 text-sm text-stone-300">
-            <input
-              class="size-4 accent-lime-300"
-              type="checkbox"
-              on:change={toggleAllPeople}
-              checked={adminUsers.length > 0 && selectedUserIds.length === adminUsers.length}
-            />
-            <span>Select all</span>
-          </label>
-
-          <label class="grid min-w-64 gap-1">
-            <span class="text-sm text-stone-300">Search matches as</span>
-            <select class={inputClass} name="focusUserId">
-              <option value="" selected={!adminFocusUserId}>Group overlap</option>
-              {#each adminUsers as user}
-                <option value={user.id} selected={adminFocusUserId === user.id}>
-                  {user.displayName || user.username}
-                </option>
-              {/each}
-            </select>
-          </label>
+        <div class="flex flex-wrap items-center gap-4" aria-hidden="true">
+          <span class={`${skeletonBlockClass} h-5 w-24`}></span>
+          <span class={`${skeletonBlockClass} h-16 w-64`}></span>
         </div>
-
-        <div class="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-          {#each adminUsers as user}
-            <label class="flex items-center gap-3 rounded border border-white/10 bg-stone-950/60 p-3">
-              <input class="size-4 accent-lime-300" type="checkbox" name="userIds" value={user.id} checked={selectedUserIds.includes(user.id)} />
-              <span class="grid">
-                <strong>{user.displayName || user.username}</strong>
-                <small class="text-stone-400">{user.lists.buyer} looking / {user.lists.seller} selling</small>
+        <div class="grid gap-2 md:grid-cols-2 xl:grid-cols-3" aria-hidden="true">
+          {#each Array(6) as _}
+            <div class="flex items-center gap-3 rounded border border-white/10 bg-stone-950/60 p-3">
+              <span class={`${skeletonBlockClass} size-4`}></span>
+              <span class="grid flex-1 gap-2">
+                <span class={`${skeletonBlockClass} h-4 w-32`}></span>
+                <span class={`${skeletonBlockClass} h-3 w-28`}></span>
               </span>
-            </label>
+            </div>
           {/each}
         </div>
+        <span class={`${skeletonBlockClass} h-10 w-52`} aria-hidden="true"></span>
+      </section>
+    {:then adminUsers}
+      <section class={`${panelClass} grid gap-4`}>
         <div>
-          <button class={buttonClass} type="submit" disabled={isSubmitting || adminUsers.length < 2}>
-            {isSubmitting ? "Matching..." : "Compute selected people"}
-          </button>
+          <div>
+            <p class={eyebrowClass}>Admin compute</p>
+            <h2 class="mt-1 text-xl font-bold">Run a match for selected people</h2>
+            <p class="text-stone-400">Select accounts, then compute buyer and seller overlap only inside that set.</p>
+          </div>
         </div>
-      </form>
-    </section>
+        <form class="grid gap-4" method="POST" action="?/adminSet" use:enhance={enhanceSubmit}>
+          <div class="flex flex-wrap items-center gap-4">
+            <label class="flex items-center gap-2 text-sm text-stone-300">
+              <input
+                class="size-4 accent-lime-300"
+                type="checkbox"
+                on:change={toggleAllPeople}
+                checked={adminUsers.length > 0 && selectedUserIds.length === adminUsers.length}
+              />
+              <span>Select all</span>
+            </label>
+
+            <label class="grid min-w-64 gap-1">
+              <span class="text-sm text-stone-300">Search matches as</span>
+              <select class={inputClass} name="focusUserId">
+                <option value="" selected={!adminFocusUserId}>Group overlap</option>
+                {#each adminUsers as user}
+                  <option value={user.id} selected={adminFocusUserId === user.id}>
+                    {user.displayName || user.username}
+                  </option>
+                {/each}
+              </select>
+            </label>
+          </div>
+
+          <div class="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {#each adminUsers as user}
+              <label class="flex items-center gap-3 rounded border border-white/10 bg-stone-950/60 p-3">
+                <input class="size-4 accent-lime-300" type="checkbox" name="userIds" value={user.id} checked={selectedUserIds.includes(user.id)} />
+                <span class="grid">
+                  <strong>{user.displayName || user.username}</strong>
+                  <small class="text-stone-400">{user.lists.buyer} looking / {user.lists.seller} selling</small>
+                </span>
+              </label>
+            {/each}
+          </div>
+          <div>
+            <button class={buttonClass} type="submit" disabled={isSubmitting || adminUsers.length < 2}>
+              {isSubmitting ? "Matching..." : "Compute selected people"}
+            </button>
+          </div>
+        </form>
+      </section>
+    {:catch}
+      <section class={`${panelClass} text-red-200`}>Could not load accounts.</section>
+    {/await}
   {/if}
 
   {#if form?.error}
@@ -244,12 +309,26 @@
   {/if}
 
   {#if adminContactOutput}
-    <section class="grid gap-4">
-      {@render MatchResult(`Sellers to contact for ${adminFocusUser?.displayName || adminFocusUser?.username || "selected user"}`, adminContactOutput.sellersToContact, "No sellers currently match this user's looking-for lists.")}
-      {@render MatchResult(`Buyers to contact for ${adminFocusUser?.displayName || adminFocusUser?.username || "selected user"}`, adminContactOutput.buyersToContact, "No buyers currently match this user's selling lists.")}
-    </section>
+    {#await adminUsersPromise then adminUsers}
+      {@const adminFocusUser = adminUsers.find((user) => user.id === adminFocusUserId)}
+      <section class="grid gap-4">
+        {@render MatchResult(`Sellers to contact for ${adminFocusUser?.displayName || adminFocusUser?.username || "selected user"}`, adminContactOutput.sellersToContact, "No sellers currently match this user's looking-for lists.")}
+        {@render MatchResult(`Buyers to contact for ${adminFocusUser?.displayName || adminFocusUser?.username || "selected user"}`, adminContactOutput.buyersToContact, "No buyers currently match this user's selling lists.")}
+      </section>
+    {/await}
   {/if}
 </main>
+
+{#snippet ListSkeleton()}
+  <div class="grid gap-3" aria-hidden="true">
+    {#each Array(3) as _}
+      <div class="grid gap-2 rounded border border-white/10 bg-stone-950/60 p-3">
+        <span class={`${skeletonBlockClass} h-5 w-44 max-w-full`}></span>
+        <span class={`${skeletonBlockClass} h-4 w-full`}></span>
+      </div>
+    {/each}
+  </div>
+{/snippet}
 
 {#snippet ListColumn(lists: Array<{ id: string; label: string | null; url: string }>)}
   {#if lists.length}

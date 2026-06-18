@@ -7,19 +7,21 @@
   import CardTable from "$lib/components/CardTable.svelte";
   import type { AnalysisResult } from "$lib/server/types";
 
+  type PreviousAnalysis = {
+    shareId: string;
+    moxfieldUrl: string;
+    commanderName: string | null;
+    ignoreBefore: string | null;
+    ignoreAfter: string | null;
+    createdAt: string;
+  };
+
   export let data: {
     currentUser?: {
       username: string;
       displayName?: string | null;
     } | null;
-    previousAnalyses?: Array<{
-      shareId: string;
-      moxfieldUrl: string;
-      commanderName: string | null;
-      ignoreBefore: string | null;
-      ignoreAfter: string | null;
-      createdAt: string;
-    }>;
+    previousAnalyses?: PreviousAnalysis[] | Promise<PreviousAnalysis[]>;
   };
 
   export let form:
@@ -93,7 +95,7 @@
   };
 
   $: output = form?.output;
-  $: previousAnalyses = data.previousAnalyses ?? [];
+  $: previousAnalysesPromise = Promise.resolve(data.previousAnalyses ?? []);
 
   let isSubmitting = false;
   let progress = 0;
@@ -654,6 +656,7 @@
   const eyebrowClass = "text-xs font-extrabold uppercase tracking-widest text-lime-300";
   const statLabelClass = "text-xs font-bold uppercase tracking-wider text-stone-400";
   const statValueClass = "mt-1 text-lg font-black text-stone-100";
+  const skeletonBlockClass = "animate-pulse rounded bg-stone-950/80";
 </script>
 
 <svelte:head>
@@ -778,26 +781,41 @@
           <p class={eyebrowClass}>Previous analyses</p>
           <h2 class="text-xl font-bold">Saved for {data.currentUser.displayName || data.currentUser.username}</h2>
         </div>
-        <span class="rounded bg-stone-950 px-3 py-1 text-sm text-stone-300">{previousAnalyses.length} saved</span>
       </div>
-      {#if previousAnalyses.length}
-        <div class="grid gap-2">
-          {#each previousAnalyses as analysis}
-            <a class="grid gap-1 rounded border border-white/10 bg-stone-950/60 p-3 text-stone-100 no-underline hover:border-lime-300/50" href={`/analysis/${analysis.shareId}`}>
-              <strong>{analysis.commanderName || "Deck analysis"}</strong>
-              <span class="truncate text-sm text-stone-400">{analysis.moxfieldUrl}</span>
-              <small class="text-stone-500">
-                {new Date(analysis.createdAt).toLocaleString()}
-                {#if analysis.ignoreBefore || analysis.ignoreAfter}
-                  - {analysis.ignoreBefore || "start"} to {analysis.ignoreAfter || "now"}
-                {/if}
-              </small>
-            </a>
+      {#await previousAnalysesPromise}
+        <div class="grid gap-3" aria-hidden="true">
+          <span class={`${skeletonBlockClass} h-7 w-20`}></span>
+          {#each Array(3) as _}
+            <div class="grid gap-2 rounded border border-white/10 bg-stone-950/60 p-3">
+              <span class={`${skeletonBlockClass} h-5 w-44 max-w-full`}></span>
+              <span class={`${skeletonBlockClass} h-4 w-full`}></span>
+              <span class={`${skeletonBlockClass} h-3 w-32`}></span>
+            </div>
           {/each}
         </div>
-      {:else}
-        <p class="text-sm text-stone-400">No saved analyses yet.</p>
-      {/if}
+      {:then previousAnalyses}
+        <span class="w-fit rounded bg-stone-950 px-3 py-1 text-sm text-stone-300">{previousAnalyses.length} saved</span>
+        {#if previousAnalyses.length}
+          <div class="grid gap-2">
+            {#each previousAnalyses as analysis}
+              <a class="grid gap-1 rounded border border-white/10 bg-stone-950/60 p-3 text-stone-100 no-underline hover:border-lime-300/50" href={`/analysis/${analysis.shareId}`}>
+                <strong>{analysis.commanderName || "Deck analysis"}</strong>
+                <span class="truncate text-sm text-stone-400">{analysis.moxfieldUrl}</span>
+                <small class="text-stone-500">
+                  {new Date(analysis.createdAt).toLocaleString()}
+                  {#if analysis.ignoreBefore || analysis.ignoreAfter}
+                    - {analysis.ignoreBefore || "start"} to {analysis.ignoreAfter || "now"}
+                  {/if}
+                </small>
+              </a>
+            {/each}
+          </div>
+        {:else}
+          <p class="text-sm text-stone-400">No saved analyses yet.</p>
+        {/if}
+      {:catch}
+        <p class="text-sm text-red-200">Could not load saved analyses.</p>
+      {/await}
     </section>
   {/if}
 

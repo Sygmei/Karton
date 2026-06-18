@@ -1,9 +1,16 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
 
+  type AdminUser = {
+    id: string;
+    username: string;
+    displayName?: string | null;
+    role: string;
+  };
+
   export let data: {
-    currentUser: Record<string, unknown>;
-    users: Array<Record<string, unknown>>;
+    currentUser: AdminUser;
+    users: AdminUser[] | Promise<AdminUser[]>;
   };
   export let form:
     | {
@@ -25,12 +32,7 @@
 
   $: activeGeneratedLink =
     form?.generatedLink && dismissedGeneratedLinkUrl !== form.generatedLink.connectionUrl ? form.generatedLink : null;
-  $: generatedUser = activeGeneratedLink
-    ? data.users.find((user) => user.id === activeGeneratedLink?.userId)
-    : null;
-  $: selectedLoginLinkUser = selectedLoginLinkUserId
-    ? data.users.find((user) => user.id === selectedLoginLinkUserId)
-    : null;
+  $: usersPromise = Promise.resolve(data.users ?? []);
 
   const createEnhance = () => {
     creating = true;
@@ -47,6 +49,7 @@
   const dangerButtonClass = "h-10 rounded bg-red-300 px-4 py-2 font-bold text-stone-950";
   const ghostButtonClass = "h-10 rounded border border-white/15 bg-transparent px-4 py-2 font-bold text-stone-100";
   const eyebrowClass = "mb-1 text-xs font-extrabold uppercase tracking-widest text-amber-300";
+  const skeletonBlockClass = "animate-pulse rounded bg-stone-950/80";
   const loginLinkTtlOptions = [
     { value: 5, label: "5 min" },
     { value: 15, label: "15 min" },
@@ -133,73 +136,97 @@
     </form>
   </section>
 
-  <section class="grid gap-3 md:grid-cols-2">
-    {#each data.users as user}
-      <article class={`${panelClass} flex items-center justify-between gap-4`}>
-        <div>
-          <strong class="block">{user.displayName || user.username}</strong>
-          <span class="text-sm text-stone-400">@{user.username} - {user.role}</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <button class={buttonClass} type="button" on:click={() => openLoginLinkModal(user.id)}>QR</button>
-          {#if user.id !== data.currentUser.id && user.role !== "superadmin"}
-            <form method="POST" action="?/deleteUser">
-              <input type="hidden" name="userId" value={String(user.id)} />
-              <button class={dangerButtonClass} type="submit">Delete</button>
-            </form>
-          {/if}
-        </div>
-      </article>
-    {/each}
-  </section>
+  {#await usersPromise}
+    <section class="grid gap-3 md:grid-cols-2" aria-hidden="true">
+      {#each Array(6) as _}
+        <article class={`${panelClass} flex items-center justify-between gap-4`}>
+          <div class="grid min-w-0 flex-1 gap-2">
+            <span class={`${skeletonBlockClass} h-5 w-40 max-w-full`}></span>
+            <span class={`${skeletonBlockClass} h-4 w-28 max-w-full`}></span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class={`${skeletonBlockClass} h-10 w-16`}></span>
+            <span class={`${skeletonBlockClass} h-10 w-24`}></span>
+          </div>
+        </article>
+      {/each}
+    </section>
+  {:then users}
+    <section class="grid gap-3 md:grid-cols-2">
+      {#each users as user}
+        <article class={`${panelClass} flex items-center justify-between gap-4`}>
+          <div>
+            <strong class="block">{user.displayName || user.username}</strong>
+            <span class="text-sm text-stone-400">@{user.username} - {user.role}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button class={buttonClass} type="button" on:click={() => openLoginLinkModal(user.id)}>QR</button>
+            {#if user.id !== data.currentUser.id && user.role !== "superadmin"}
+              <form method="POST" action="?/deleteUser">
+                <input type="hidden" name="userId" value={String(user.id)} />
+                <button class={dangerButtonClass} type="submit">Delete</button>
+              </form>
+            {/if}
+          </div>
+        </article>
+      {/each}
+    </section>
+  {:catch}
+    <section class={`${panelClass} text-red-200`}>Could not load user accounts.</section>
+  {/await}
 </main>
 
-{#if selectedLoginLinkUser}
-  <div class="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
-    <section class={`${panelClass} grid w-full max-w-md gap-4 shadow-2xl`}>
-      <div>
-        <p class={eyebrowClass}>Temporary access</p>
-        <h2 class="text-xl font-bold">Create QR for {selectedLoginLinkUser.username}</h2>
-        <p class="mt-1 text-sm text-stone-400">Choose how long this login link should remain usable.</p>
-      </div>
+{#await usersPromise then users}
+  {@const selectedLoginLinkUser = selectedLoginLinkUserId ? users.find((user) => user.id === selectedLoginLinkUserId) : null}
+  {@const generatedUser = activeGeneratedLink ? users.find((user) => user.id === activeGeneratedLink.userId) : null}
 
-      <form class="grid gap-4" method="POST" action="?/loginLink">
-        <input type="hidden" name="userId" value={String(selectedLoginLinkUser.id)} />
-        <label class="grid gap-1">
-          <span class="text-sm text-stone-300">Expires after</span>
-          <select class={inputClass} name="ttlMinutes">
-            {#each loginLinkTtlOptions as option}
-              <option value={option.value}>{option.label}</option>
-            {/each}
-          </select>
-        </label>
-        <div class="flex justify-end gap-2">
-          <button class={ghostButtonClass} type="button" on:click={closeLoginLinkModal}>Cancel</button>
-          <button class={buttonClass} type="submit">Generate QR</button>
-        </div>
-      </form>
-    </section>
-  </div>
-{/if}
-
-{#if activeGeneratedLink}
-  <div class="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
-    <section class={`${panelClass} grid w-full max-w-2xl gap-4 shadow-2xl md:grid-cols-[1fr_auto] md:items-center`}>
-      <div class="grid gap-3">
-        <p class={eyebrowClass}>Temporary access</p>
-        <h2 class="text-xl font-bold">{generatedUser?.username ?? "Login link"}</h2>
-        <p class="text-stone-400">
-          Valid until {new Date(activeGeneratedLink.expiresAt).toLocaleString()}
-          {#if activeGeneratedLink.ttlMinutes}
-            ({formatTtl(activeGeneratedLink.ttlMinutes)})
-          {/if}
-        </p>
-        <input class={inputClass} readonly value={activeGeneratedLink.connectionUrl} />
+  {#if selectedLoginLinkUser}
+    <div class="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
+      <section class={`${panelClass} grid w-full max-w-md gap-4 shadow-2xl`}>
         <div>
-          <button class={ghostButtonClass} type="button" on:click={dismissGeneratedLink}>Close</button>
+          <p class={eyebrowClass}>Temporary access</p>
+          <h2 class="text-xl font-bold">Create QR for {selectedLoginLinkUser.username}</h2>
+          <p class="mt-1 text-sm text-stone-400">Choose how long this login link should remain usable.</p>
         </div>
-      </div>
-      <img class="size-40 rounded bg-white p-2" src={activeGeneratedLink.qrDataUrl} alt="Temporary login QR code" />
-    </section>
-  </div>
-{/if}
+
+        <form class="grid gap-4" method="POST" action="?/loginLink">
+          <input type="hidden" name="userId" value={String(selectedLoginLinkUser.id)} />
+          <label class="grid gap-1">
+            <span class="text-sm text-stone-300">Expires after</span>
+            <select class={inputClass} name="ttlMinutes">
+              {#each loginLinkTtlOptions as option}
+                <option value={option.value}>{option.label}</option>
+              {/each}
+            </select>
+          </label>
+          <div class="flex justify-end gap-2">
+            <button class={ghostButtonClass} type="button" on:click={closeLoginLinkModal}>Cancel</button>
+            <button class={buttonClass} type="submit">Generate QR</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  {/if}
+
+  {#if activeGeneratedLink}
+    <div class="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
+      <section class={`${panelClass} grid w-full max-w-2xl gap-4 shadow-2xl md:grid-cols-[1fr_auto] md:items-center`}>
+        <div class="grid gap-3">
+          <p class={eyebrowClass}>Temporary access</p>
+          <h2 class="text-xl font-bold">{generatedUser?.username ?? "Login link"}</h2>
+          <p class="text-stone-400">
+            Valid until {new Date(activeGeneratedLink.expiresAt).toLocaleString()}
+            {#if activeGeneratedLink.ttlMinutes}
+              ({formatTtl(activeGeneratedLink.ttlMinutes)})
+            {/if}
+          </p>
+          <input class={inputClass} readonly value={activeGeneratedLink.connectionUrl} />
+          <div>
+            <button class={ghostButtonClass} type="button" on:click={dismissGeneratedLink}>Close</button>
+          </div>
+        </div>
+        <img class="size-40 rounded bg-white p-2" src={activeGeneratedLink.qrDataUrl} alt="Temporary login QR code" />
+      </section>
+    </div>
+  {/if}
+{/await}

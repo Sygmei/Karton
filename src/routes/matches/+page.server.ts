@@ -18,24 +18,26 @@ export const load: PageServerLoad = async ({ locals }) => {
   if (!locals.user) {
     throw redirect(303, '/');
   }
-  const savedLists = await listUserCardLists(locals.user.id);
   const isAdmin = locals.user?.role === 'admin' || locals.user?.role === 'superadmin';
-  const [adminUsers, allLists] = isAdmin ? await Promise.all([listUsers(), listAllUserCardLists(['buyer', 'seller'])]) : [[], []];
+  return {
+    savedLists: listUserCardLists(locals.user.id),
+    adminUsers: isAdmin ? listMatcherAdminUsers() : Promise.resolve([])
+  };
+};
+
+async function listMatcherAdminUsers() {
+  const [adminUsers, allLists] = await Promise.all([listUsers(), listAllUserCardLists(['buyer', 'seller'])]);
   const adminUserListCounts = new Map<string, { buyer: number; seller: number }>();
   for (const list of allLists) {
     const counts = adminUserListCounts.get(list.userId) || { buyer: 0, seller: 0 };
     counts[list.kind] += 1;
     adminUserListCounts.set(list.userId, counts);
   }
-  return {
-    currentUser: locals.user ? userToJson(locals.user) : null,
-    savedLists,
-    adminUsers: adminUsers.map((user) => ({
-      ...userToJson(user),
-      lists: adminUserListCounts.get(user.id) || { buyer: 0, seller: 0 }
-    }))
-  };
-};
+  return adminUsers.map((user) => ({
+    ...userToJson(user),
+    lists: adminUserListCounts.get(user.id) || { buyer: 0, seller: 0 }
+  }));
+}
 
 export const actions: Actions = {
   addList: async ({ request, locals }) => {

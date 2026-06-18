@@ -2,7 +2,6 @@ import { fail } from '@sveltejs/kit';
 
 import { normalizeSupportedDeckUrl } from '$lib/adapters/deck-source';
 import { listAnalysisRunsForUser, saveAnalysisRun } from '$lib/server/analysis-runs-repo';
-import { userToJson } from '$lib/server/auth';
 import { isAppError } from '$lib/server/app-error';
 import { getTraceId, withSpan } from '$lib/server/otel';
 import { completeProgress, failProgress, initProgress, updateProgress } from '$lib/server/progress';
@@ -21,10 +20,8 @@ const DEFAULT_VALUES = {
 };
 
 export const load: PageServerLoad = async ({ locals }) => {
-  const previousAnalyses = locals.user ? await listAnalysisRunsForUser(locals.user.id) : [];
   return {
-    currentUser: locals.user ? userToJson(locals.user) : null,
-    previousAnalyses
+    previousAnalyses: locals.user ? listAnalysisRunsForUser(locals.user.id) : Promise.resolve([])
   };
 };
 

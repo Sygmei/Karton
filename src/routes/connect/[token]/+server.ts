@@ -1,6 +1,6 @@
 import { error, redirect } from '@sveltejs/kit';
 
-import { isAppError } from '$lib/server/app-error';
+import { isAppError, type AppError } from '$lib/server/app-error';
 import { consumeLoginToken, setSessionCookie } from '$lib/server/auth';
 
 import type { RequestHandler } from './$types';
@@ -16,6 +16,7 @@ export const GET: RequestHandler = async ({ params, cookies, url }) => {
     }
 
     if (isAppError(caught)) {
+      logLoginLinkAppError(caught);
       throw error(caught.httpStatusCode, caught.userFacingError);
     }
 
@@ -26,6 +27,17 @@ export const GET: RequestHandler = async ({ params, cookies, url }) => {
 
 function isRedirect(value: unknown): boolean {
   return Boolean(value && typeof value === 'object' && 'status' in value && 'location' in value);
+}
+
+function logLoginLinkAppError(value: AppError): void {
+  if (value.httpStatusCode < 500) {
+    return;
+  }
+  console.error('[auth] failed to consume login link', {
+    message: value.adminFacingError,
+    type: value.errorTypeName,
+    status: value.httpStatusCode
+  });
 }
 
 function logUnexpectedLoginLinkError(value: unknown): void {

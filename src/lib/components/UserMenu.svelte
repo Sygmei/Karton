@@ -9,13 +9,13 @@
   $: currentInitial = (currentName || "?").slice(0, 1).toUpperCase();
 </script>
 
-<details class="relative">
+<details class="relative justify-self-end">
   <summary
-    class="flex cursor-pointer list-none items-center gap-2 rounded border border-lime-100/10 bg-stone-900 p-1 pr-3 text-stone-100 [&::-webkit-details-marker]:hidden"
+    class="flex h-10 cursor-pointer list-none items-center gap-2 rounded border border-lime-100/10 bg-stone-900 p-1 text-stone-100 sm:h-auto sm:pr-3 [&::-webkit-details-marker]:hidden"
     aria-label="User menu"
     title="User menu"
   >
-    <span class="grid size-9 shrink-0 place-items-center rounded border border-lime-200 bg-lime-300 text-sm font-black text-stone-950">{currentInitial}</span>
+    <span class="grid size-8 shrink-0 place-items-center rounded border border-lime-200 bg-lime-300 text-sm font-black text-stone-950 sm:size-9">{currentInitial}</span>
     <span class="hidden min-w-0 sm:grid">
       <strong class="truncate text-sm leading-tight">{currentName}</strong>
       <small class="truncate text-[0.68rem] uppercase text-stone-400">{currentUser.role}</small>
