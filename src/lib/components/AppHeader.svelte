@@ -2,6 +2,7 @@
   import { afterNavigate } from "$app/navigation";
   import { page } from "$app/stores";
 
+  import { t, type TranslationKey } from "$lib/i18n";
   import UserMenu from "./UserMenu.svelte";
 
   export let currentUser:
@@ -17,22 +18,22 @@
 
   type NavItem = {
     href: string;
-    label: string;
-    kicker: string;
+    label: TranslationKey;
+    kicker: TranslationKey;
     match: (pathname: string) => boolean;
   };
 
   const navItems: NavItem[] = [
     {
       href: "/analyzer",
-      label: "Deck Analyzer",
-      kicker: "Add / Cut / Keep",
+      label: "nav.deckAnalyzer",
+      kicker: "nav.deckAnalyzerKicker",
       match: (pathname) => pathname.startsWith("/analyzer") || pathname.startsWith("/analysis")
     },
     {
       href: "/matches",
-      label: "Matcher",
-      kicker: "Buyer / seller",
+      label: "nav.matcher",
+      kicker: "nav.matcherKicker",
       match: (pathname) => pathname.startsWith("/matches")
     }
   ];
@@ -62,19 +63,19 @@
     <img class="size-9 shrink-0 rounded border border-lime-100/20 bg-stone-950 object-contain p-1 sm:size-9" src="/icon.svg" alt="" aria-hidden="true" />
     <span class="hidden min-w-0 sm:grid">
       <strong class="truncate text-sm leading-tight">Karton</strong>
-      <small class="truncate text-[0.68rem] uppercase text-stone-400">MtG tools</small>
+      <small class="truncate text-[0.68rem] uppercase text-stone-400">{$t("nav.mtgTools")}</small>
     </span>
   </a>
 
   <nav class="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] gap-1 sm:gap-2 lg:justify-self-center lg:w-[min(560px,100%)]" aria-label="Application sections">
     <a
-      class={`grid h-10 min-w-10 place-items-center rounded border px-2 text-center no-underline transition sm:min-w-11 sm:px-3 ${pathname === "/" ? "border-lime-300 bg-lime-300 text-stone-950" : "border-lime-100/10 bg-stone-900 text-stone-400 hover:bg-stone-800 hover:text-stone-100"}`}
+      class={`grid h-10 min-w-10 place-items-center rounded border px-2 text-center no-underline transition sm:min-h-[3.375rem] sm:min-w-11 sm:px-3 sm:py-2 ${pathname === "/" ? "border-lime-300 bg-lime-300 text-stone-950" : "border-lime-100/10 bg-stone-900 text-stone-400 hover:bg-stone-800 hover:text-stone-100"}`}
       href="/"
       on:pointerdown={() => markNavigation("/")}
       on:click={() => markNavigation("/")}
-      aria-label="Home"
+      aria-label={$t("nav.home")}
       aria-current={pathname === "/" ? "page" : undefined}
-      title="Home"
+      title={$t("nav.home")}
     >
       <svg class="size-4" viewBox="0 0 24 24" aria-hidden="true">
         <path
@@ -89,7 +90,7 @@
     </a>
     {#each navItems as item}
       <a
-        class={`grid h-10 min-w-0 place-items-center rounded border px-2 text-center no-underline transition sm:h-auto sm:px-3 sm:py-2 ${visibleNavItems.includes(item) ? "" : "invisible pointer-events-none"} ${item.match(pathname) ? "border-lime-300 bg-lime-300 text-stone-950" : "border-lime-100/10 bg-stone-900 text-stone-400 hover:bg-stone-800 hover:text-stone-100"}`}
+        class={`grid h-10 min-w-0 place-items-center rounded border px-2 text-center no-underline transition sm:min-h-[3.375rem] sm:px-3 sm:py-2 ${visibleNavItems.includes(item) ? "" : "invisible pointer-events-none"} ${item.match(pathname) ? "border-lime-300 bg-lime-300 text-stone-950" : "border-lime-100/10 bg-stone-900 text-stone-400 hover:bg-stone-800 hover:text-stone-100"}`}
         href={item.href}
         on:pointerdown={() => markNavigation(item.href)}
         on:click={() => markNavigation(item.href)}
@@ -97,8 +98,8 @@
         aria-hidden={!visibleNavItems.includes(item)}
         tabindex={visibleNavItems.includes(item) ? undefined : -1}
       >
-        <span class="truncate text-xs font-extrabold sm:text-sm">{item.label}</span>
-        <small class="hidden truncate text-[0.66rem] uppercase sm:block">{item.kicker}</small>
+        <span class="truncate text-xs font-extrabold sm:text-sm">{$t(item.label)}</span>
+        <small class="hidden truncate text-[0.66rem] uppercase sm:block">{$t(item.kicker)}</small>
       </a>
     {/each}
   </nav>

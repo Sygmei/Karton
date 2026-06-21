@@ -1,4 +1,6 @@
 <script lang="ts">
+  import PageHeader from "$lib/components/PageHeader.svelte";
+
   export let data: {
     currentUser: {
       username: string;
@@ -36,19 +38,12 @@
 </svelte:head>
 
 <main class={pageClass}>
-  <section
-    class={`${panelClass} flex flex-wrap items-center justify-between gap-4`}
+  <PageHeader
+    title={data.currentUser.displayName || data.currentUser.username}
+    subtitle={`@${data.currentUser.username} - ${data.currentUser.role}`}
+    tone="amber"
   >
-    <div>
-      <p class={eyebrowClass}>Signed in</p>
-      <h1 class="text-2xl font-black">
-        {data.currentUser.displayName || data.currentUser.username}
-      </h1>
-      <p class="text-stone-400">
-        @{data.currentUser.username} - {data.currentUser.role}
-      </p>
-    </div>
-    <div class="flex flex-wrap items-center gap-3">
+    <div slot="actions" class="flex flex-wrap items-center gap-3">
       <form method="POST" action="?/loginLink">
         <button class={buttonClass} type="submit"
           >Login on another device</button
@@ -58,7 +53,7 @@
         <button class={ghostButtonClass} type="submit">Sign out</button>
       </form>
     </div>
-  </section>
+  </PageHeader>
 
   {#if form?.error}
     <p class={`${panelClass} text-red-200`}>{form.error}</p>

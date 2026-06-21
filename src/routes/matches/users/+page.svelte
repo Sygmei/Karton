@@ -1,6 +1,9 @@
 <script lang="ts">
   import { onMount } from "svelte";
 
+  import PageHeader from "$lib/components/PageHeader.svelte";
+  import { t } from "$lib/i18n";
+
   type UserList = {
     id: string;
     kind: "buyer" | "seller";
@@ -73,7 +76,6 @@
   const pageClass = "mx-auto grid w-[min(1180px,94vw)] gap-4 py-4 pb-12";
   const panelClass = "rounded border border-white/10 bg-stone-900/80 p-4";
   const inputClass = "w-full rounded border border-white/15 bg-stone-950 px-3 py-2 text-stone-100 placeholder:text-stone-600";
-  const eyebrowClass = "text-xs font-extrabold uppercase tracking-widest text-lime-300";
   const skeletonBlockClass = "animate-pulse rounded bg-stone-950/80";
 </script>
 
@@ -82,22 +84,23 @@
 </svelte:head>
 
 <main class={pageClass}>
-  <nav class="flex flex-wrap items-center justify-between gap-3 text-sm text-stone-400">
-    <a class="text-lime-300 no-underline" href="/matches">Matcher</a>
-    <span>User lists</span>
-  </nav>
-
-  <section class={`${panelClass} grid gap-3 md:grid-cols-[1fr_320px] md:items-end`}>
-    <div>
-      <p class={eyebrowClass}>Matcher directory</p>
-      <h1 class="mt-2 text-3xl font-black">Users and saved lists</h1>
-      <p class="mt-2 text-stone-400">Browse each account's looking-for and selling lists.</p>
+  <PageHeader
+    title={$t("matcher.directoryTitle")}
+    subtitle={$t("matcher.directoryDescription")}
+  >
+    <div slot="actions" class="grid gap-3 sm:min-w-80">
+      <a
+        class="w-fit rounded border border-white/15 bg-transparent px-4 py-2 text-sm font-bold text-stone-100 no-underline hover:border-lime-300/50"
+        href="/matches"
+      >
+        {$t("nav.matcher")}
+      </a>
+      <label class="grid gap-1">
+        <span class="text-sm text-stone-300">{$t("matcher.filter")}</span>
+        <input class={inputClass} bind:value={query} placeholder={$t("matcher.filterPlaceholder")} />
+      </label>
     </div>
-    <label class="grid gap-1">
-      <span class="text-sm text-stone-300">Filter</span>
-      <input class={inputClass} bind:value={query} placeholder="Name, username, label, URL" />
-    </label>
-  </section>
+  </PageHeader>
 
   {#await directoryPromise}
     <section class="grid gap-3 md:grid-cols-2">
@@ -112,9 +115,9 @@
   {:then directory}
     {@const users = visibleUsers(directory.users)}
     <section class={`${panelClass} flex flex-wrap items-center justify-between gap-3`}>
-      <span class="text-sm text-stone-300">{users.length} users shown</span>
+      <span class="text-sm text-stone-300">{$t("matcher.usersShown", { count: users.length })}</span>
       <span class="text-sm text-stone-400">
-        {directory.users.reduce((sum, user) => sum + user.lists.length, 0)} saved lists total
+        {$t("matcher.savedListsTotal", { count: directory.users.reduce((sum, user) => sum + user.lists.length, 0) })}
       </span>
     </section>
 
@@ -134,7 +137,7 @@
 
             <div class="grid gap-3 lg:grid-cols-2">
               <div class="grid content-start gap-2">
-                <h3 class="text-sm font-bold text-lime-300">Looking for ({buyerLists.length})</h3>
+                <h3 class="text-sm font-bold text-lime-300">{$t("matcher.lookingForShort")} ({buyerLists.length})</h3>
                 {#if buyerLists.length}
                   {#each buyerLists as list}
                     <a class="grid min-w-0 rounded border border-white/10 bg-stone-950/60 p-3 text-stone-100 no-underline hover:border-lime-300/50" href={list.url} target="_blank" rel="noreferrer">
@@ -143,12 +146,12 @@
                     </a>
                   {/each}
                 {:else}
-                  <p class="text-sm text-stone-500">No looking-for lists.</p>
+                  <p class="text-sm text-stone-500">{$t("matcher.noLookingLists")}</p>
                 {/if}
               </div>
 
               <div class="grid content-start gap-2">
-                <h3 class="text-sm font-bold text-lime-300">Selling ({sellerLists.length})</h3>
+                <h3 class="text-sm font-bold text-lime-300">{$t("matcher.sellingShort")} ({sellerLists.length})</h3>
                 {#if sellerLists.length}
                   {#each sellerLists as list}
                     <a class="grid min-w-0 rounded border border-white/10 bg-stone-950/60 p-3 text-stone-100 no-underline hover:border-lime-300/50" href={list.url} target="_blank" rel="noreferrer">
@@ -157,7 +160,7 @@
                     </a>
                   {/each}
                 {:else}
-                  <p class="text-sm text-stone-500">No selling lists.</p>
+                  <p class="text-sm text-stone-500">{$t("matcher.noSellingLists")}</p>
                 {/if}
               </div>
             </div>
@@ -165,11 +168,11 @@
         {/each}
       </section>
     {:else}
-      <section class={`${panelClass} text-stone-400`}>No users match this filter.</section>
+      <section class={`${panelClass} text-stone-400`}>{$t("matcher.noUsersMatch")}</section>
     {/if}
   {:catch error}
     <section class={`${panelClass} text-red-200`}>
-      {error instanceof Error ? error.message : "Could not load user lists."}
+      {error instanceof Error ? error.message : $t("matcher.loadUsersFailed")}
     </section>
   {/await}
 </main>

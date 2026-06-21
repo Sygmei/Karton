@@ -5,10 +5,12 @@
 
   import AppHeader from "$lib/components/AppHeader.svelte";
   import { currentUser, type CurrentUser } from "$lib/current-user";
+  import { initLanguage } from "$lib/i18n";
 
   let currentUserLoaded = false;
 
   onMount(async () => {
+    initLanguage();
     try {
       const response = await fetch("/api/session", {
         headers: {

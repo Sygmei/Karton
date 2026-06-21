@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
+  import PageHeader from "$lib/components/PageHeader.svelte";
 
   type AdminUser = {
     id: string;
@@ -249,17 +250,15 @@
 </svelte:head>
 
 <main class={pageClass}>
-  <section
-    class={`${panelClass} flex flex-wrap items-center justify-between gap-4`}
+  <PageHeader
+    title="User accounts"
+    subtitle="Create, invite, and manage user records."
+    tone="amber"
   >
-    <div>
-      <p class={eyebrowClass}>Admin</p>
-      <h1 class="text-2xl font-black">User accounts</h1>
-    </div>
-    <form method="POST" action="/logout">
+    <form slot="actions" method="POST" action="/logout">
       <button class={ghostButtonClass} type="submit">Sign out</button>
     </form>
-  </section>
+  </PageHeader>
 
   {#if form?.error}
     <p class={`${panelClass} text-red-200`}>{form.error}</p>

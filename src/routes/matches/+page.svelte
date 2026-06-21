@@ -2,7 +2,9 @@
   import { enhance } from "$app/forms";
   import { onMount } from "svelte";
 
+  import PageHeader from "$lib/components/PageHeader.svelte";
   import { currentUser } from "$lib/current-user";
+  import { t } from "$lib/i18n";
   import type {
     CardListMatchResult,
     UserContactMatchResult,
@@ -150,35 +152,24 @@
 </svelte:head>
 
 <main class={pageClass}>
-  <section
-    class={`${panelClass} grid gap-3 md:grid-cols-[1fr_1.2fr] md:items-end`}
-  >
-    <div>
-      <p class={eyebrowClass}>Buyer and seller overlap</p>
-      <h1 class="mt-2 text-3xl font-black">Match cards across public lists</h1>
-    </div>
-    <p class="text-stone-400">
-      Uses saved looking-for and selling lists from Karton accounts, then ranks
-      exact card-name overlaps so each user knows who to contact.
-    </p>
-  </section>
+  <PageHeader
+    title={$t("matcher.title")}
+    subtitle={$t("matcher.description")}
+  />
 
   {#if $currentUser}
     {#await savedListsPromise}
-      <section
-        class={`${panelClass} flex flex-wrap items-center justify-between gap-4`}
-      >
-        <div>
-          <p class={eyebrowClass}>My saved lists</p>
-          <h2 class="mt-1 text-xl font-bold">Find people to contact</h2>
-          <div class="mt-2 grid gap-2" aria-hidden="true">
-            <span class={`${skeletonBlockClass} h-4 w-72 max-w-full`}></span>
-            <span class={`${skeletonBlockClass} h-4 w-56 max-w-full`}></span>
-          </div>
-        </div>
-        <span class={`${skeletonBlockClass} h-11 w-52`} aria-hidden="true"
-        ></span>
-      </section>
+      <div class="flex flex-wrap items-center gap-3">
+        <button class={buttonClass} type="button" disabled>
+          {$t("matcher.findPeople")}
+        </button>
+        <a
+          class="rounded border border-white/15 bg-transparent px-4 py-2.5 font-bold text-stone-100 no-underline hover:border-lime-300/50"
+          href="/matches/users"
+        >
+          {$t("matcher.viewAllUsers")}
+        </a>
+      </div>
     {:then savedLists}
       {@const savedBuyerCount = savedLists.filter(
         (list) => list.kind === "buyer",
@@ -186,45 +177,45 @@
       {@const savedSellerCount = savedLists.filter(
         (list) => list.kind === "seller",
       ).length}
-      <section
-        class={`${panelClass} flex flex-wrap items-center justify-between gap-4`}
-      >
-        <div>
-          <p class={eyebrowClass}>My saved lists</p>
-          <h2 class="mt-1 text-xl font-bold">Find people to contact</h2>
-          <p class="text-stone-400">
-            Uses your {savedBuyerCount} looking-for lists and {savedSellerCount}
-            selling lists against all other saved user lists.
-          </p>
-        </div>
-        <div>
-          <form method="POST" action="?/saved" use:enhance={enhanceSubmit}>
-            <button
-              class={buttonClass}
-              type="submit"
-              disabled={isSubmitting || (!savedBuyerCount && !savedSellerCount)}
-            >
-              {isSubmitting ? "Matching..." : "Find people to contact"}
-            </button>
-          </form>
-        </div>
-      </section>
+      <div class="flex flex-wrap items-center gap-3">
+        <form method="POST" action="?/saved" use:enhance={enhanceSubmit}>
+          <button
+            class={buttonClass}
+            type="submit"
+            disabled={isSubmitting || (!savedBuyerCount && !savedSellerCount)}
+          >
+            {isSubmitting ? $t("matcher.finding") : $t("matcher.findPeople")}
+          </button>
+        </form>
+        <a
+          class="rounded border border-white/15 bg-transparent px-4 py-2.5 font-bold text-stone-100 no-underline hover:border-lime-300/50"
+          href="/matches/users"
+        >
+          {$t("matcher.viewAllUsers")}
+        </a>
+      </div>
     {:catch}
-      <section class={`${panelClass} text-red-200`}>
-        Could not load saved lists.
-      </section>
+      <p class="text-sm text-red-200">
+        {$t("matcher.loadSavedListsFailed")}
+      </p>
     {/await}
+  {:else}
+    <div class="flex flex-wrap items-center gap-3">
+      <a
+        class="rounded border border-white/15 bg-transparent px-4 py-2.5 font-bold text-stone-100 no-underline hover:border-lime-300/50"
+        href="/matches/users"
+      >
+        {$t("matcher.viewAllUsers")}
+      </a>
+    </div>
   {/if}
 
   <section class={`${panelClass} grid gap-4`} id="lists">
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <p class={eyebrowClass}>Saved lists</p>
-        <h2 class="mt-1 text-xl font-bold">Add a list</h2>
+        <p class={eyebrowClass}>{$t("matcher.savedLists")}</p>
+        <h2 class="mt-1 text-xl font-bold">{$t("matcher.addList")}</h2>
       </div>
-      <a class="rounded border border-white/15 bg-transparent px-4 py-2 text-sm font-bold text-stone-100 no-underline hover:border-lime-300/50" href="/matches/users">
-        View all users
-      </a>
     </div>
     <form
       class="grid gap-3 md:grid-cols-[180px_1fr_2fr_auto] md:items-end"
@@ -232,18 +223,18 @@
       action="?/addList"
     >
       <label class="grid gap-1">
-        <span class="text-sm text-stone-300">Type</span>
+        <span class="text-sm text-stone-300">{$t("matcher.type")}</span>
         <select class={inputClass} name="kind">
-          <option value="buyer">I'm looking for</option>
-          <option value="seller">I'm selling</option>
+          <option value="buyer">{$t("matcher.lookingFor")}</option>
+          <option value="seller">{$t("matcher.selling")}</option>
         </select>
       </label>
       <label class="grid gap-1">
-        <span class="text-sm text-stone-300">Label</span>
-        <input class={inputClass} name="label" placeholder="Optional" />
+        <span class="text-sm text-stone-300">{$t("matcher.label")}</span>
+        <input class={inputClass} name="label" placeholder={$t("matcher.optional")} />
       </label>
       <label class="grid gap-1">
-        <span class="text-sm text-stone-300">URL</span>
+        <span class="text-sm text-stone-300">{$t("matcher.url")}</span>
         <input
           class={inputClass}
           name="url"
@@ -251,18 +242,18 @@
           required
         />
       </label>
-      <button class={buttonClass} type="submit">Add list</button>
+      <button class={buttonClass} type="submit">{$t("matcher.add")}</button>
     </form>
   </section>
 
   {#await savedListsPromise}
     <section class="grid gap-4 md:grid-cols-2">
       <div class={`${panelClass} grid gap-3 content-start`}>
-        <h2 class="text-xl font-bold">I'm looking for</h2>
+        <h2 class="text-xl font-bold">{$t("matcher.lookingFor")}</h2>
         {@render ListSkeleton()}
       </div>
       <div class={`${panelClass} grid gap-3 content-start`}>
-        <h2 class="text-xl font-bold">I'm selling</h2>
+        <h2 class="text-xl font-bold">{$t("matcher.selling")}</h2>
         {@render ListSkeleton()}
       </div>
     </section>
@@ -271,17 +262,17 @@
     {@const sellerLists = savedLists.filter((list) => list.kind === "seller")}
     <section class="grid gap-4 md:grid-cols-2">
       <div class={`${panelClass} grid gap-3 content-start`}>
-        <h2 class="text-xl font-bold">I'm looking for</h2>
+        <h2 class="text-xl font-bold">{$t("matcher.lookingFor")}</h2>
         {@render ListColumn(buyerLists)}
       </div>
       <div class={`${panelClass} grid gap-3 content-start`}>
-        <h2 class="text-xl font-bold">I'm selling</h2>
+        <h2 class="text-xl font-bold">{$t("matcher.selling")}</h2>
         {@render ListColumn(sellerLists)}
       </div>
     </section>
   {:catch}
     <section class={`${panelClass} text-red-200`}>
-      Could not load saved lists.
+      {$t("matcher.loadSavedListsFailed")}
     </section>
   {/await}
 
@@ -289,9 +280,9 @@
     {#await adminUsersPromise}
       <section class={`${panelClass} grid gap-4`}>
         <div>
-          <p class={eyebrowClass}>Admin compute</p>
+          <p class={eyebrowClass}>{$t("matcher.adminCompute")}</p>
           <h2 class="mt-1 text-xl font-bold">
-            Run a match for selected people
+            {$t("matcher.adminComputeTitle")}
           </h2>
           <div class="mt-2 grid gap-2" aria-hidden="true">
             <span class={`${skeletonBlockClass} h-4 w-80 max-w-full`}></span>
@@ -325,13 +316,12 @@
       <section class={`${panelClass} grid gap-4`}>
         <div>
           <div>
-            <p class={eyebrowClass}>Admin compute</p>
+            <p class={eyebrowClass}>{$t("matcher.adminCompute")}</p>
             <h2 class="mt-1 text-xl font-bold">
-              Run a match for selected people
+              {$t("matcher.adminComputeTitle")}
             </h2>
             <p class="text-stone-400">
-              Select accounts, then compute buyer and seller overlap only inside
-              that set.
+              {$t("matcher.adminComputeDescription")}
             </p>
           </div>
         </div>
@@ -350,14 +340,14 @@
                 checked={adminUsers.length > 0 &&
                   selectedUserIds.length === adminUsers.length}
               />
-              <span>Select all</span>
+              <span>{$t("matcher.selectAll")}</span>
             </label>
 
             <label class="grid min-w-64 gap-1">
-              <span class="text-sm text-stone-300">Search matches as</span>
+              <span class="text-sm text-stone-300">{$t("matcher.searchMatchesAs")}</span>
               <select class={inputClass} name="focusUserId">
                 <option value="" selected={!adminFocusUserId}
-                  >Group overlap</option
+                  >{$t("matcher.groupOverlap")}</option
                 >
                 {#each adminUsers as user}
                   <option
@@ -386,7 +376,10 @@
                 <span class="grid">
                   <strong>{user.displayName || user.username}</strong>
                   <small class="text-stone-400"
-                    >{user.lists.buyer} looking / {user.lists.seller} selling</small
+                    >{$t("matcher.userListCounts", {
+                      buyerCount: user.lists.buyer,
+                      sellerCount: user.lists.seller
+                    })}</small
                   >
                 </span>
               </label>
@@ -398,14 +391,14 @@
               type="submit"
               disabled={isSubmitting || adminUsers.length < 2}
             >
-              {isSubmitting ? "Matching..." : "Compute selected people"}
+              {isSubmitting ? $t("matcher.finding") : $t("matcher.computeSelectedPeople")}
             </button>
           </div>
         </form>
       </section>
     {:catch}
       <section class={`${panelClass} text-red-200`}>
-        Could not load accounts.
+        {$t("matcher.loadAccountsFailed")}
       </section>
     {/await}
   {/if}
@@ -503,12 +496,12 @@
         </a>
         <form method="POST" action="?/deleteList">
           <input type="hidden" name="listId" value={list.id} />
-          <button class={dangerButtonClass} type="submit">Delete</button>
+          <button class={dangerButtonClass} type="submit">{$t("matcher.delete")}</button>
         </form>
       </article>
     {/each}
   {:else}
-    <p class="text-sm text-stone-400">No lists yet.</p>
+    <p class="text-sm text-stone-400">{$t("matcher.noListsYet")}</p>
   {/if}
 {/snippet}
 

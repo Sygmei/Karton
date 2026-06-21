@@ -5,7 +5,9 @@
   import { onDestroy, onMount } from "svelte";
 
   import CardTable from "$lib/components/CardTable.svelte";
+  import PageHeader from "$lib/components/PageHeader.svelte";
   import { currentUser } from "$lib/current-user";
+  import { t } from "$lib/i18n";
   import type { AnalysisResult } from "$lib/server/types";
 
   type PreviousAnalysis = {
@@ -687,6 +689,11 @@
 </svelte:head>
 
 <main class={pageClass}>
+  <PageHeader
+    title={$t("analyzer.title")}
+    subtitle={$t("analyzer.description")}
+  />
+
   {#if isSubmitting}
     <section class="sticky top-24 z-40 rounded border border-lime-200/30 bg-stone-950/95 p-4 shadow-2xl" aria-live="polite" aria-busy="true">
       <div class="flex items-center justify-between gap-4">
@@ -710,13 +717,6 @@
   {/if}
 
   <section class={`${panelClass} grid gap-5`}>
-    <div>
-      <h1 class="text-3xl font-black">Deck Analyzer</h1>
-      <p class="mt-2 text-stone-400">
-        Compare your Duel Commander list against live MtgTop8 trends.
-      </p>
-    </div>
-
     <form method="POST" class="grid gap-4" use:enhance={enhanceSubmit}>
       <label class={fieldClass}>
         <span class={labelTextClass}>Deck URL (Moxfield or Archidekt)</span>
@@ -736,12 +736,12 @@
 
       <div class="grid gap-3 md:grid-cols-2">
         <label class={fieldClass}>
-          <span class={labelTextClass}>Ignore MtGTop8 decks before date ...</span>
+          <span class={labelTextClass}>{$t("analyzer.ignoreBefore")}</span>
           <input class={inputClass} name="startDate" type="date" value={values.startDate} />
         </label>
 
         <label class={fieldClass}>
-          <span class={labelTextClass}>Ignore MtGTop8 decks after date ...</span>
+          <span class={labelTextClass}>{$t("analyzer.ignoreAfter")}</span>
           <input class={inputClass} name="endDate" type="date" value={values.endDate} />
         </label>
       </div>
@@ -786,7 +786,7 @@
         </div>
       {/if}
 
-      <button class={buttonClass} type="submit">Analyze Deck</button>
+      <button class={buttonClass} type="submit">{$t("analyzer.submit")}</button>
     </form>
 
     {#if form?.error}
@@ -801,8 +801,8 @@
     <section class={`${panelClass} grid gap-4`}>
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p class={eyebrowClass}>Previous analyses</p>
-          <h2 class="text-xl font-bold">Saved for {$currentUser.displayName || $currentUser.username}</h2>
+          <p class={eyebrowClass}>{$t("analyzer.previousAnalyses")}</p>
+          <h2 class="text-xl font-bold">{$t("analyzer.savedFor", { name: $currentUser.displayName || $currentUser.username })}</h2>
         </div>
       </div>
       {#await previousAnalysesPromise}
@@ -817,7 +817,7 @@
           {/each}
         </div>
       {:then previousAnalyses}
-        <span class="w-fit rounded bg-stone-950 px-3 py-1 text-sm text-stone-300">{previousAnalyses.length} saved</span>
+        <span class="w-fit rounded bg-stone-950 px-3 py-1 text-sm text-stone-300">{$t("analyzer.savedCount", { count: previousAnalyses.length })}</span>
         {#if previousAnalyses.length}
           <div class="grid gap-2">
             {#each previousAnalyses as analysis}
@@ -833,11 +833,9 @@
               </a>
             {/each}
           </div>
-        {:else}
-          <p class="text-sm text-stone-400">No saved analyses yet.</p>
         {/if}
       {:catch}
-        <p class="text-sm text-red-200">Could not load saved analyses.</p>
+        <p class="text-sm text-red-200">{$t("analyzer.loadPreviousFailed")}</p>
       {/await}
     </section>
   {/if}

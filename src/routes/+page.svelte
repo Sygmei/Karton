@@ -1,5 +1,7 @@
 <script lang="ts">
   import { currentUser } from "$lib/current-user";
+  import PageHeader from "$lib/components/PageHeader.svelte";
+  import { t } from "$lib/i18n";
 
   const cardClass =
     "rounded border border-white/10 bg-stone-900/80 p-5 text-stone-100 no-underline transition hover:border-lime-300/50 hover:bg-stone-900";
@@ -12,27 +14,23 @@
 </svelte:head>
 
 <main class="mx-auto grid w-[min(980px,94vw)] gap-5 py-8 pb-12">
-  <section class="rounded border border-white/10 bg-stone-900/80 p-6">
-    <p class={eyebrowClass}>Karton</p>
-    <h1 class="mt-2 text-3xl font-black">Pick a tool</h1>
-  </section>
+  <PageHeader title={$t("home.title")} />
 
   <section class="grid gap-4 md:grid-cols-2">
     <a class={cardClass} href="/analyzer">
       <p class={eyebrowClass}>Deck Analyzer</p>
-      <h2 class="mt-2 text-xl font-bold">Find cards to keep, cut, and add</h2>
+      <h2 class="mt-2 text-xl font-bold">{$t("home.analyzerTitle")}</h2>
       <p class="mt-2 text-sm text-stone-400">
-        Paste a Moxfield or Archidekt deck and compare it to recent Duel
-        Commander trends.
+        {$t("home.analyzerDescription")}
       </p>
     </a>
 
     {#if $currentUser}
       <a class={cardClass} href="/matches">
         <p class={eyebrowClass}>Matcher</p>
-        <h2 class="mt-2 text-xl font-bold">Match wanted and selling lists</h2>
+        <h2 class="mt-2 text-xl font-bold">{$t("home.matcherTitle")}</h2>
         <p class="mt-2 text-sm text-stone-400">
-          Use saved public lists to find people with exact card-name overlap.
+          {$t("home.matcherDescription")}
         </p>
       </a>
     {:else}
@@ -42,12 +40,12 @@
           <span
             class="rounded-full border border-amber-200/30 bg-amber-300/10 px-2 py-0.5 text-[0.68rem] font-bold uppercase tracking-wide text-amber-200"
           >
-            Available only for registered users
+            {$t("home.registeredOnly")}
           </span>
         </div>
-        <h2 class="mt-2 text-xl font-bold">Match wanted and selling lists</h2>
+        <h2 class="mt-2 text-xl font-bold">{$t("home.matcherTitle")}</h2>
         <p class="mt-2 text-sm text-stone-400">
-          Use saved public lists to find people with exact card-name overlap.
+          {$t("home.matcherDescription")}
         </p>
       </article>
     {/if}
