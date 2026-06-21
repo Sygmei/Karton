@@ -2,9 +2,10 @@
   import { enhance } from "$app/forms";
   import { goto } from "$app/navigation";
   import type { SubmitFunction } from "@sveltejs/kit";
-  import { onDestroy } from "svelte";
+  import { onDestroy, onMount } from "svelte";
 
   import CardTable from "$lib/components/CardTable.svelte";
+  import { currentUser } from "$lib/current-user";
   import type { AnalysisResult } from "$lib/server/types";
 
   type PreviousAnalysis = {
@@ -14,14 +15,6 @@
     ignoreBefore: string | null;
     ignoreAfter: string | null;
     createdAt: string;
-  };
-
-  export let data: {
-    currentUser?: {
-      username: string;
-      displayName?: string | null;
-    } | null;
-    previousAnalyses?: PreviousAnalysis[] | Promise<PreviousAnalysis[]>;
   };
 
   export let form:
@@ -95,7 +88,21 @@
   };
 
   $: output = form?.output;
-  $: previousAnalysesPromise = Promise.resolve(data.previousAnalyses ?? []);
+
+  let previousAnalysesPromise: Promise<PreviousAnalysis[]> = pending();
+  let loadedPreviousAnalyses = false;
+
+  onMount(() => {
+    return currentUser.subscribe((user) => {
+      if (user && !loadedPreviousAnalyses) {
+        loadedPreviousAnalyses = true;
+        previousAnalysesPromise = fetchJson<PreviousAnalysis[]>("/analyzer/previous-analyses");
+      }
+      if (!user) {
+        previousAnalysesPromise = Promise.resolve([]);
+      }
+    });
+  });
 
   let isSubmitting = false;
   let progress = 0;
@@ -642,6 +649,22 @@
     }
   }
 
+  function pending<T>(): Promise<T> {
+    return new Promise(() => {});
+  }
+
+  async function fetchJson<T>(url: string): Promise<T> {
+    const response = await fetch(url, {
+      headers: {
+        accept: "application/json"
+      }
+    });
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
+    return (await response.json()) as T;
+  }
+
   onDestroy(() => {
     stopProgressPolling();
     stopProgressSmoothing();
@@ -774,12 +797,12 @@
     {/if}
   </section>
 
-  {#if data.currentUser}
+  {#if $currentUser}
     <section class={`${panelClass} grid gap-4`}>
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p class={eyebrowClass}>Previous analyses</p>
-          <h2 class="text-xl font-bold">Saved for {data.currentUser.displayName || data.currentUser.username}</h2>
+          <h2 class="text-xl font-bold">Saved for {$currentUser.displayName || $currentUser.username}</h2>
         </div>
       </div>
       {#await previousAnalysesPromise}

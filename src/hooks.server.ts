@@ -1,6 +1,6 @@
 import type { Handle } from '@sveltejs/kit';
 
-import { resolveSessionUser } from '$lib/server/auth';
+import { resolveSessionUser, SESSION_COOKIE_NAME } from '$lib/server/auth';
 import { initOpenTelemetry, withSpan } from '$lib/server/otel';
 
 initOpenTelemetry();
@@ -8,10 +8,12 @@ initOpenTelemetry();
 export const handle: Handle = async ({ event, resolve }) => {
   const clientIp = resolveClientIp(event);
   const requestKind = classifyRequest(event.request.method, event.url.pathname);
-  event.locals.user = await resolveSessionUser(event.cookies).catch((error) => {
-    console.error('[auth] failed to resolve session user', error);
-    return null;
-  });
+  event.locals.user = shouldResolveSessionUser(event)
+    ? await resolveSessionUser(event.cookies).catch((error) => {
+        console.error('[auth] failed to resolve session user', error);
+        return null;
+      })
+    : null;
 
   if (requestKind === 'analysis_progress_poll') {
     return await resolve(event);
@@ -67,6 +69,35 @@ function resolveClientIp(event: Parameters<Handle>[0]['event']): string {
   }
 
   return 'unknown';
+}
+
+function shouldResolveSessionUser(event: Parameters<Handle>[0]['event']): boolean {
+  const sessionToken = event.cookies.get(SESSION_COOKIE_NAME)?.trim();
+  if (!sessionToken) {
+    return false;
+  }
+
+  const pathname = event.url.pathname;
+  const method = event.request.method.toUpperCase();
+  if (method !== 'GET') {
+    return (
+      pathname === '/logout' ||
+      pathname.startsWith('/account') ||
+      pathname.startsWith('/admin') ||
+      pathname.startsWith('/analyzer') ||
+      pathname.startsWith('/matches')
+    );
+  }
+
+  return (
+    pathname === '/api/session' ||
+    pathname === '/analyzer/previous-analyses' ||
+    pathname === '/matches/lists' ||
+    pathname === '/matches/admin-users' ||
+    pathname === '/matches/users/data' ||
+    pathname.startsWith('/account') ||
+    pathname.startsWith('/admin')
+  );
 }
 
 function classifyRequest(method: string, pathname: string): string {

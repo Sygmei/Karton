@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { and, eq, inArray } from 'drizzle-orm';
 
+import { normalizeSupportedCardListUrl } from '../adapters/card-list-source';
 import { AppError } from './app-error';
 import { getWriteDb } from './db';
 import { userCardLists, users } from './db-schema';
@@ -93,6 +94,7 @@ export async function createUserCardList(input: {
       httpStatusCode: 400
     });
   }
+  const normalizedUrl = normalizeSupportedCardListUrl(url).normalizedUrl;
 
   const now = new Date();
   const positionRows = await getWriteDb()
@@ -107,7 +109,7 @@ export async function createUserCardList(input: {
       id: randomUUID(),
       userId: input.userId,
       kind,
-      url,
+      url: normalizedUrl,
       label: input.label?.trim() || null,
       position,
       createdAt: now,

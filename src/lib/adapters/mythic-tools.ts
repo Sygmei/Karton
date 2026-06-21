@@ -17,6 +17,8 @@ const SHORT_ID_BASE = SHORT_ID_ALPHABET.length;
 const SHORT_ID_SEPARATOR = 'X';
 const SHORT_ID_MOD = 2147483647n;
 const SHORT_ID_INVERSE = 1989098352n;
+const MYTHIC_API_MAX_ATTEMPTS = 3;
+const MYTHIC_API_RETRY_DELAY_MS = 500;
 
 export function normalizeMythicToolsListUrl(value: string): string {
   const input = String(value || '').trim();
@@ -160,6 +162,28 @@ async function fetchMythicToolsPage(
   page: number,
   timeoutMs: number
 ): Promise<Record<string, unknown>> {
+  let lastError: unknown = null;
+  for (let attempt = 1; attempt <= MYTHIC_API_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      return await fetchMythicToolsPageAttempt(userId, listId, page, timeoutMs, attempt);
+    } catch (error) {
+      lastError = error;
+      if (attempt >= MYTHIC_API_MAX_ATTEMPTS || !shouldRetryMythicToolsPageError(error)) {
+        throw error;
+      }
+      await delay(MYTHIC_API_RETRY_DELAY_MS * attempt);
+    }
+  }
+  throw lastError;
+}
+
+async function fetchMythicToolsPageAttempt(
+  userId: number,
+  listId: number,
+  page: number,
+  timeoutMs: number,
+  attempt: number
+): Promise<Record<string, unknown>> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const url = new URL(`${MYTHIC_API_BASE}/user/${userId}/list/${listId}`);
@@ -193,16 +217,16 @@ async function fetchMythicToolsPage(
     if (!response.ok) {
       throw new AppError({
         userFacingError: 'Could not fetch this Mythic Tools list. Verify that it is public or unlisted.',
-        adminFacingError: `Mythic Tools API fetch failed status=${response.status} url=${url.toString()}`,
+        adminFacingError: `Mythic Tools API fetch failed status=${response.status} url=${url.toString()} attempt=${attempt}`,
         errorTypeName: 'MythicToolsListFetchError',
-        httpStatusCode: response.status === 404 ? 404 : 422
+        httpStatusCode: mythicToolsErrorStatusCode(response.status)
       });
     }
     const payload = (await response.json()) as unknown;
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
       throw new AppError({
         userFacingError: 'Mythic Tools returned an unexpected response.',
-        adminFacingError: `Mythic Tools API returned invalid payload for url=${url.toString()}`,
+        adminFacingError: `Mythic Tools API returned invalid payload for url=${url.toString()} attempt=${attempt}`,
         errorTypeName: 'MythicToolsListPayloadError',
         httpStatusCode: 422
       });
@@ -214,7 +238,7 @@ async function fetchMythicToolsPage(
     }
     throw new AppError({
       userFacingError: 'Could not fetch this Mythic Tools list. Verify that it is public or unlisted.',
-      adminFacingError: `Mythic Tools API request failed url=${url.toString()} cause=${error instanceof Error ? error.message : String(error)}`,
+      adminFacingError: `Mythic Tools API request failed url=${url.toString()} attempt=${attempt} cause=${error instanceof Error ? error.message : String(error)}`,
       errorTypeName: 'MythicToolsListRequestError',
       httpStatusCode: 422,
       cause: error
@@ -222,6 +246,34 @@ async function fetchMythicToolsPage(
   } finally {
     clearTimeout(timer);
   }
+}
+
+function shouldRetryMythicToolsPageError(error: unknown): boolean {
+  if (!(error instanceof AppError)) {
+    return true;
+  }
+  return (
+    error.errorTypeName === 'MythicToolsListRequestError' ||
+    error.httpStatusCode === 429 ||
+    error.httpStatusCode >= 500
+  );
+}
+
+function mythicToolsErrorStatusCode(status: number): number {
+  if (status === 404) {
+    return 404;
+  }
+  if (status === 429) {
+    return 429;
+  }
+  if (status >= 500) {
+    return 502;
+  }
+  return 422;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function getRequiredMythicToolsSecret(name: 'MYTHIC_TOOLS_API_KEY' | 'MYTHIC_TOOLS_WEB_KEY'): string {

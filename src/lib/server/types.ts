@@ -1,7 +1,7 @@
 export type CardMap = Record<string, number>;
 
 export type DeckSource = 'moxfield' | 'archidekt';
-export type CardListSource = DeckSource | 'cardmarket' | 'mythic-tools';
+export type CardListSource = DeckSource | 'mythic-tools';
 
 export interface InputDeck {
   source: DeckSource;
@@ -31,10 +31,18 @@ export interface MatchedCard {
   sellers: Array<{ listName: string; url: string; quantity: number }>;
 }
 
+export interface CardListWarning {
+  role: 'buyer' | 'seller';
+  listName: string;
+  url: string;
+  message: string;
+}
+
 export interface CardListMatchResult {
   buyers: CardList[];
   sellers: CardList[];
   matches: MatchedCard[];
+  warnings: CardListWarning[];
   totals: {
     buyerLists: number;
     sellerLists: number;

@@ -4,7 +4,6 @@ import {
   normalizeArchidektDeckUrl,
   normalizeArchidektFolderUrl
 } from './archidekt';
-import { fetchCardmarketSellerList, normalizeCardmarketUserUrl } from './cardmarket';
 import { fetchMoxfieldDeck, normalizeMoxfieldDeckUrl } from './moxfield';
 import { fetchMythicToolsList, normalizeMythicToolsListUrl } from './mythic-tools';
 import { AppError } from '../server/app-error';
@@ -18,6 +17,8 @@ interface ResolvedCardListUrl {
   source: CardListSource;
   normalizedUrl: string;
 }
+
+const SUPPORTED_CARD_LIST_SOURCE_TEXT = 'Moxfield, Archidekt, or Mythic Tools';
 
 export function normalizeSupportedCardListUrl(value: string): ResolvedCardListUrl {
   const input = String(value || '').trim();
@@ -36,7 +37,7 @@ export function normalizeSupportedCardListUrl(value: string): ResolvedCardListUr
     parsed = new URL(withScheme);
   } catch {
     throw new AppError({
-      userFacingError: 'Invalid list URL. Use Moxfield, Archidekt, Cardmarket, or Mythic Tools.',
+      userFacingError: `Invalid list URL. Use ${SUPPORTED_CARD_LIST_SOURCE_TEXT}.`,
       adminFacingError: `Card list URL parse failure: ${value}`,
       errorTypeName: 'CardListUrlInvalidError',
       httpStatusCode: 400
@@ -53,15 +54,12 @@ export function normalizeSupportedCardListUrl(value: string): ResolvedCardListUr
     }
     return { source: 'archidekt', normalizedUrl: normalizeArchidektDeckUrl(input) };
   }
-  if (host === 'cardmarket.com' || host === 'www.cardmarket.com') {
-    return { source: 'cardmarket', normalizedUrl: normalizeCardmarketUserUrl(input) };
-  }
   if (host === 'mythic.tools' || host === 'www.mythic.tools') {
     return { source: 'mythic-tools', normalizedUrl: normalizeMythicToolsListUrl(input) };
   }
 
   throw new AppError({
-    userFacingError: 'Unsupported list host. Use Moxfield, Archidekt, Cardmarket, or Mythic Tools.',
+    userFacingError: `Unsupported list host. Use ${SUPPORTED_CARD_LIST_SOURCE_TEXT}.`,
     adminFacingError: `Unsupported card list host: ${host} input=${value}`,
     errorTypeName: 'CardListHostUnsupportedError',
     httpStatusCode: 400
@@ -79,9 +77,6 @@ export async function fetchCardListFromUrl(value: string, options: FetchCardList
       return await fetchArchidektFolderList(resolved.normalizedUrl);
     }
     return await fetchArchidektCardList(resolved.normalizedUrl);
-  }
-  if (resolved.source === 'cardmarket') {
-    return await fetchCardmarketSellerList(resolved.normalizedUrl, { headless: options.headless ?? true });
   }
   return await fetchMythicToolsList(resolved.normalizedUrl);
 }

@@ -4,7 +4,7 @@ import { and, eq, gt, isNull, or } from 'drizzle-orm';
 import type { Cookies } from '@sveltejs/kit';
 
 import { AppError } from './app-error';
-import { getWriteDb } from './db';
+import { getReadDb, getWriteDb } from './db';
 import { userLoginLinks, userSessions, users } from './db-schema';
 
 export const SESSION_COOKIE_NAME = 'mtg_meta_session';
@@ -204,6 +204,64 @@ export async function deleteUser(targetId: string, auth: AppUser): Promise<void>
   await getWriteDb().delete(users).where(eq(users.id, target.id));
 }
 
+export async function updateUserByAdmin(
+  targetId: string,
+  auth: AppUser,
+  input: {
+    displayName?: string | null;
+    role?: UserRole;
+  }
+): Promise<AppUser> {
+  const target = await findUserById(targetId);
+  if (!target) {
+    throw new AppError({
+      userFacingError: 'User not found.',
+      adminFacingError: `Admin update user missing id=${targetId}`,
+      errorTypeName: 'UserNotFoundError',
+      httpStatusCode: 404
+    });
+  }
+  if (auth.role !== 'superadmin' && target.role !== 'user') {
+    throw new AppError({
+      userFacingError: 'Admins can only edit standard users.',
+      adminFacingError: `Admin ${auth.id} tried to edit role=${target.role}`,
+      errorTypeName: 'UserUpdateRoleForbiddenError',
+      httpStatusCode: 401
+    });
+  }
+
+  const patch: Partial<typeof users.$inferInsert> = {};
+  if ('displayName' in input) {
+    patch.displayName = input.displayName?.trim() || null;
+  }
+  if (input.role && input.role !== target.role) {
+    if (target.id === auth.id || target.role === 'superadmin' || input.role === 'superadmin' || auth.role !== 'superadmin') {
+      throw new AppError({
+        userFacingError: 'You are not allowed to change that role.',
+        adminFacingError: `Forbidden role update target=${target.id} from=${target.role} to=${input.role} requester=${auth.id}`,
+        errorTypeName: 'UserRoleUpdateForbiddenError',
+        httpStatusCode: 401
+      });
+    }
+    patch.role = input.role;
+  }
+
+  if (!Object.keys(patch).length) {
+    return target;
+  }
+
+  const [updated] = await getWriteDb().update(users).set(patch).where(eq(users.id, target.id)).returning();
+  if (!updated) {
+    throw new AppError({
+      userFacingError: 'User not found.',
+      adminFacingError: `Admin update disappeared user=${target.id}`,
+      errorTypeName: 'UserNotFoundError',
+      httpStatusCode: 404
+    });
+  }
+  return rowToUser(updated);
+}
+
 export async function updateUserDisplayName(input: { userId: string; displayName: string | null }): Promise<AppUser> {
   const value = input.displayName?.trim() || null;
   const [updated] = await getWriteDb()
@@ -347,7 +405,7 @@ export async function resolveSessionUser(cookies: Cookies): Promise<AppUser | nu
     return null;
   }
   const now = new Date();
-  const [row] = await getWriteDb()
+  const [row] = await getReadDb()
     .select({ user: users })
     .from(userSessions)
     .innerJoin(users, eq(users.id, userSessions.userId))

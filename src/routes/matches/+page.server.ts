@@ -1,43 +1,19 @@
 import { fail, redirect } from '@sveltejs/kit';
 
 import { isAppError } from '$lib/server/app-error';
-import { ensureAdmin, listUsers, userToJson } from '$lib/server/auth';
+import { ensureAdmin } from '$lib/server/auth';
+import { listMatcherAdminUsers } from '$lib/server/matcher-admin';
 import { getTraceId, withSpan } from '$lib/server/otel';
 import { computeSavedCardListMatches, computeUserContactMatches } from '$lib/server/trade-matcher';
 import {
   createUserCardList,
   deleteUserCardList,
   listAllUserCardLists,
-  listUserCardLists,
   parseListKind
 } from '$lib/server/user-lists';
 
-import type { Actions, PageServerLoad } from './$types';
-
-export const load: PageServerLoad = async ({ locals }) => {
-  if (!locals.user) {
-    throw redirect(303, '/');
-  }
-  const isAdmin = locals.user?.role === 'admin' || locals.user?.role === 'superadmin';
-  return {
-    savedLists: listUserCardLists(locals.user.id),
-    adminUsers: isAdmin ? listMatcherAdminUsers() : Promise.resolve([])
-  };
-};
-
-async function listMatcherAdminUsers() {
-  const [adminUsers, allLists] = await Promise.all([listUsers(), listAllUserCardLists(['buyer', 'seller'])]);
-  const adminUserListCounts = new Map<string, { buyer: number; seller: number }>();
-  for (const list of allLists) {
-    const counts = adminUserListCounts.get(list.userId) || { buyer: 0, seller: 0 };
-    counts[list.kind] += 1;
-    adminUserListCounts.set(list.userId, counts);
-  }
-  return adminUsers.map((user) => ({
-    ...userToJson(user),
-    lists: adminUserListCounts.get(user.id) || { buyer: 0, seller: 0 }
-  }));
-}
+import type { Actions } from './$types';
+import type { UserContactMatchResult } from '$lib/server/types';
 
 export const actions: Actions = {
   addList: async ({ request, locals }) => {
@@ -99,11 +75,13 @@ export const actions: Actions = {
           });
           span.setAttribute('matches.sellers_to_contact_cards', result.sellersToContact.totals.matchedCards);
           span.setAttribute('matches.buyers_to_contact_cards', result.buyersToContact.totals.matchedCards);
+          span.setAttribute('matches.warning_count', countUserContactWarnings(result));
           return result;
         }
       );
       return {
-        accountOutput: output
+        accountOutput: output,
+        traceId: countUserContactWarnings(output) ? matchesTraceId || undefined : undefined
       };
     } catch (error) {
       const traceId = matchesTraceId || normalizeTraceId(getTraceId());
@@ -180,6 +158,7 @@ export const actions: Actions = {
             });
             span.setAttribute('matches.sellers_to_contact_cards', result.sellersToContact.totals.matchedCards);
             span.setAttribute('matches.buyers_to_contact_cards', result.buyersToContact.totals.matchedCards);
+            span.setAttribute('matches.warning_count', countUserContactWarnings(result));
             return result;
           }
         );
@@ -187,7 +166,8 @@ export const actions: Actions = {
         return {
           adminContactOutput: output,
           selectedUserIds,
-          adminFocusUserId: focusUserId
+          adminFocusUserId: focusUserId,
+          traceId: countUserContactWarnings(output) ? matchesTraceId || undefined : undefined
         };
       }
 
@@ -208,6 +188,7 @@ export const actions: Actions = {
           });
           span.setAttribute('matches.matched_cards', result.totals.matchedCards);
           span.setAttribute('matches.matched_quantity', result.totals.matchedQuantity);
+          span.setAttribute('matches.warning_count', result.warnings.length);
           return result;
         }
       );
@@ -215,7 +196,8 @@ export const actions: Actions = {
       return {
         adminOutput: output,
         selectedUserIds,
-        adminFocusUserId: undefined
+        adminFocusUserId: undefined,
+        traceId: output.warnings.length ? matchesTraceId || undefined : undefined
       };
     } catch (error) {
       const traceId = matchesTraceId || normalizeTraceId(getTraceId());
@@ -254,6 +236,10 @@ function normalizeTraceId(value: string | null | undefined): string | null {
 
 function uniqueStrings(values: string[]): string[] {
   return Array.from(new Set(values.filter(Boolean)));
+}
+
+function countUserContactWarnings(result: UserContactMatchResult): number {
+  return result.sellersToContact.warnings.length + result.buyersToContact.warnings.length;
 }
 
 function actionFailure(error: unknown, fallback: string) {

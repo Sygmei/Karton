@@ -1,7 +1,7 @@
 import { fetchCardListFromUrl } from '../adapters/card-list-source';
 import { AppError, isAppError } from './app-error';
 import { withSpan } from './otel';
-import type { CardList, CardListMatchResult, CardMap, MatchedCard, UserContactMatchResult } from './types';
+import type { CardList, CardListMatchResult, CardListWarning, CardMap, MatchedCard, UserContactMatchResult } from './types';
 import type { SavedUserCardList } from './user-lists';
 import { normalizeName } from './utils';
 
@@ -15,6 +15,11 @@ interface CardDemand {
   canonicalName: string;
   quantity: number;
   lists: Array<{ listName: string; url: string; quantity: number }>;
+}
+
+interface FetchedSavedCardLists {
+  lists: CardList[];
+  warnings: CardListWarning[];
 }
 
 export async function computeCardListMatches(input: ComputeCardListMatchesInput): Promise<CardListMatchResult> {
@@ -48,6 +53,7 @@ export async function computeCardListMatches(input: ComputeCardListMatchesInput)
     buyers,
     sellers,
     matches,
+    warnings: [],
     totals: {
       buyerLists: buyers.length,
       sellerLists: sellers.length,
@@ -79,8 +85,14 @@ export async function computeUserContactMatches(input: {
   ]);
 
   return {
-    sellersToContact: buildMatchResult(buyerDemand, sellerSupply),
-    buyersToContact: buildMatchResult(otherDemand, ownSupply)
+    sellersToContact: buildMatchResult(buyerDemand.lists, sellerSupply.lists, [
+      ...buyerDemand.warnings,
+      ...sellerSupply.warnings
+    ]),
+    buyersToContact: buildMatchResult(otherDemand.lists, ownSupply.lists, [
+      ...otherDemand.warnings,
+      ...ownSupply.warnings
+    ])
   };
 }
 
@@ -94,15 +106,28 @@ export async function computeSavedCardListMatches(input: {
     fetchSavedCardLists(buyers, 'buyer', input.headless ?? true),
     fetchSavedCardLists(sellers, 'seller', input.headless ?? true)
   ]);
-  return buildMatchResult(buyerDemand, sellerSupply);
+  return buildMatchResult(buyerDemand.lists, sellerSupply.lists, [...buyerDemand.warnings, ...sellerSupply.warnings]);
 }
 
 function fetchCardLists(urls: string[], role: 'buyer' | 'seller', headless = true): Promise<CardList[]> {
   return Promise.all(urls.map((url) => fetchCardListWithContext(url, role, headless)));
 }
 
-function fetchSavedCardLists(lists: SavedUserCardList[], role: 'buyer' | 'seller', headless = true): Promise<CardList[]> {
-  return Promise.all(lists.map((list) => fetchSavedCardListWithContext(list, role, headless)));
+async function fetchSavedCardLists(
+  lists: SavedUserCardList[],
+  role: 'buyer' | 'seller',
+  headless = true
+): Promise<FetchedSavedCardLists> {
+  const fetched: CardList[] = [];
+  const warnings: CardListWarning[] = [];
+  for (const list of lists) {
+    try {
+      fetched.push(await fetchSavedCardListWithContext(list, role, headless));
+    } catch (error) {
+      warnings.push(buildSavedListWarning(list, role, error));
+    }
+  }
+  return { lists: fetched, warnings };
 }
 
 async function fetchCardListWithContext(url: string, role: 'buyer' | 'seller', headless: boolean): Promise<CardList> {
@@ -152,7 +177,18 @@ async function fetchSavedCardListWithContext(
   };
 }
 
-function buildMatchResult(buyers: CardList[], sellers: CardList[]): CardListMatchResult {
+function buildSavedListWarning(savedList: SavedUserCardList, role: 'buyer' | 'seller', error: unknown): CardListWarning {
+  const appError = isAppError(error) ? error : null;
+  const ownerName = savedList.displayName || savedList.username;
+  return {
+    role,
+    listName: `${ownerName}: ${savedList.label || savedList.url}`,
+    url: savedList.url,
+    message: appError?.userFacingError || 'Could not load this list.'
+  };
+}
+
+function buildMatchResult(buyers: CardList[], sellers: CardList[], warnings: CardListWarning[] = []): CardListMatchResult {
   const buyerIndex = indexCardLists(buyers);
   const sellerIndex = indexCardLists(sellers);
   const matches: MatchedCard[] = [];
@@ -178,6 +214,7 @@ function buildMatchResult(buyers: CardList[], sellers: CardList[]): CardListMatc
     buyers,
     sellers,
     matches,
+    warnings,
     totals: {
       buyerLists: buyers.length,
       sellerLists: sellers.length,

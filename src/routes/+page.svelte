@@ -1,11 +1,5 @@
 <script lang="ts">
-  export let data: {
-    currentUser?: {
-      username: string;
-      displayName?: string | null;
-      role: string;
-    } | null;
-  };
+  import { currentUser } from "$lib/current-user";
 
   const cardClass =
     "rounded border border-white/10 bg-stone-900/80 p-5 text-stone-100 no-underline transition hover:border-lime-300/50 hover:bg-stone-900";
@@ -33,7 +27,7 @@
       </p>
     </a>
 
-    {#if data.currentUser}
+    {#if $currentUser}
       <a class={cardClass} href="/matches">
         <p class={eyebrowClass}>Matcher</p>
         <h2 class="mt-2 text-xl font-bold">Match wanted and selling lists</h2>

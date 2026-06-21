@@ -1,14 +1,14 @@
 import { fail } from '@sveltejs/kit';
 
 import { normalizeSupportedDeckUrl } from '$lib/adapters/deck-source';
-import { listAnalysisRunsForUser, saveAnalysisRun } from '$lib/server/analysis-runs-repo';
+import { saveAnalysisRun } from '$lib/server/analysis-runs-repo';
 import { isAppError } from '$lib/server/app-error';
 import { getTraceId, withSpan } from '$lib/server/otel';
 import { completeProgress, failProgress, initProgress, updateProgress } from '$lib/server/progress';
 import { analyzeFromDeckUrl } from '$lib/server/pipeline';
 import { parseDate } from '$lib/server/utils';
 
-import type { Actions, PageServerLoad } from './$types';
+import type { Actions } from './$types';
 
 const DEFAULT_VALUES = {
   moxfieldUrl: '',
@@ -17,12 +17,6 @@ const DEFAULT_VALUES = {
   keepTop: '50',
   cutTop: '50',
   addTop: '50'
-};
-
-export const load: PageServerLoad = async ({ locals }) => {
-  return {
-    previousAnalyses: locals.user ? listAnalysisRunsForUser(locals.user.id) : Promise.resolve([])
-  };
 };
 
 export const actions: Actions = {

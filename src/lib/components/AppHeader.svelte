@@ -6,12 +6,14 @@
 
   export let currentUser:
     | {
+        id?: string;
         username?: string;
         displayName?: string | null;
         role?: string;
       }
     | null
     | undefined = null;
+  export let userLoaded = false;
 
   type NavItem = {
     href: string;
@@ -42,7 +44,7 @@
     optimisticPath = null;
   }
   $: pathname = optimisticPath ?? currentPath;
-  $: visibleNavItems = currentUser ? navItems : navItems.filter((item) => item.href !== "/matches");
+  $: visibleNavItems = currentUser || !userLoaded ? navItems : navItems.filter((item) => item.href !== "/matches");
 
   afterNavigate(() => {
     optimisticPath = null;
