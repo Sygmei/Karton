@@ -1,6 +1,7 @@
 <script lang="ts">
   import "../app.css";
 
+  import { afterNavigate } from "$app/navigation";
   import { onMount } from "svelte";
 
   import AppHeader from "$lib/components/AppHeader.svelte";
@@ -8,25 +9,47 @@
   import { initLanguage } from "$lib/i18n";
 
   let currentUserLoaded = false;
+  let currentUserRefreshId = 0;
 
-  onMount(async () => {
-    initLanguage();
+  async function refreshCurrentUser(): Promise<void> {
+    const refreshId = ++currentUserRefreshId;
     try {
       const response = await fetch("/api/session", {
         headers: {
           accept: "application/json"
         }
       });
+      if (refreshId !== currentUserRefreshId) {
+        return;
+      }
       if (!response.ok) {
         currentUser.set(null);
         return;
       }
       const payload = (await response.json()) as { currentUser?: CurrentUser | null };
+      if (refreshId !== currentUserRefreshId) {
+        return;
+      }
       currentUser.set(payload.currentUser ?? null);
     } catch {
-      currentUser.set(null);
+      if (refreshId === currentUserRefreshId) {
+        currentUser.set(null);
+      }
     } finally {
-      currentUserLoaded = true;
+      if (refreshId === currentUserRefreshId) {
+        currentUserLoaded = true;
+      }
+    }
+  }
+
+  onMount(() => {
+    initLanguage();
+    void refreshCurrentUser();
+  });
+
+  afterNavigate(() => {
+    if (currentUserLoaded) {
+      void refreshCurrentUser();
     }
   });
 </script>
