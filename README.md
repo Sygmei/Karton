@@ -33,7 +33,7 @@ DATABASE_URL_RW=postgres://postgres:postgres@localhost:5432/mtg_meta_analyzer
 DATABASE_URL_RO=postgres://postgres:postgres@localhost:5432/mtg_meta_analyzer
 DATABASE_URL_ADMIN=postgres://postgres:postgres@localhost:5432/mtg_meta_analyzer
 OTEL_ENABLED=false
-OTEL_SERVICE_NAME=mtg-meta-analyzer-web
+OTEL_SERVICE_NAME=karton-web
 OTEL_SERVICE_VERSION=0.1.0
 OTEL_DEPLOYMENT_ENVIRONMENT=development
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
@@ -42,6 +42,11 @@ OTEL_EXPORTER_OTLP_HEADERS=
 OTEL_RESOURCE_ATTRIBUTES=
 MYTHIC_TOOLS_API_KEY=
 MYTHIC_TOOLS_WEB_KEY=
+S3_ENDPOINT_URL=
+S3_REGION_NAME=
+S3_BUCKET_NAME=
+S3_ACCESS_KEY_ID=
+S3_SECRET_ACCESS_KEY=
 ```
 
 When `OTEL_ENABLED=true`, the app exports traces to `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` if set, otherwise `${OTEL_EXPORTER_OTLP_ENDPOINT}/v1/traces`.
@@ -75,61 +80,95 @@ npm run preview
 
 ## Helm chart
 
-A Helm chart is available at `helm/mtg-meta-analyzer`.
+A Helm chart is available at `helm/`.
 
-The chart is intentionally minimal and uses only two values:
+The chart deploys:
 
-- `replicaCount`
-- `version` (container image tag for `mtg-meta-analyzer-web`)
+- a two-replica `karton` Deployment using rolling updates with `maxSurge: 0` and `maxUnavailable: 1`
+- topology spread constraints so replicas prefer different nodes
+- a ClusterIP Service on port `3000`
+- an optional Traefik Ingress and HTTPS redirect Middleware
+- TLS through cert-manager using the existing `ClusterIssuer` named `letsencrypt-prod`
 
-It always creates an Ingress with:
+The chart expects these existing secrets in the target namespace:
 
-- `/` routed to service port `80`
-- `/progress` routed to service port `3210`
-- TLS from cert-manager using an existing `ClusterIssuer` (`letsencrypt-prod` in template)
+- `postgresql-credentials`
+- `mythic-tools-credentials`
+- `s3-creds`
 
-If your domain or ClusterIssuer name differs, edit:
-
-- `helm/mtg-meta-analyzer/templates/ingress.yaml`
-
-The chart expects an existing secret named `postgresql-credentials` with:
-
-- `connection-string` (RW pooler)
-- `connection-string-ro` (RO pooler)
-- `connection-string-admin` (direct admin, used for migrations only)
-
-Example:
+Create the namespace:
 
 ```bash
-kubectl -n mtg-meta-analyzer create secret generic postgresql-credentials \
+kubectl create namespace karton
+kubectl config set-context --current --namespace=karton
+```
+
+Create the database secret once in the target namespace:
+
+```bash
+kubectl create secret generic postgresql-credentials \
   --from-literal=connection-string='postgres://postgres:postgres@postgres:5432/mtg_meta_analyzer' \
   --from-literal=connection-string-ro='postgres://postgres:postgres@postgres:5432/mtg_meta_analyzer' \
   --from-literal=connection-string-admin='postgres://postgres:postgres@postgres:5432/mtg_meta_analyzer'
 ```
 
-For Mythic Tools imports, create an existing secret named `mythic-tools-credentials` with:
-
-- `api-key`
-- `web-key`
-
-Example:
+Create the Mythic Tools secret once in the target namespace:
 
 ```bash
-kubectl -n mtg-meta-analyzer create secret generic mythic-tools-credentials \
+kubectl create secret generic mythic-tools-credentials \
   --from-literal=api-key='your-api-key' \
   --from-literal=web-key='your-web-key'
 ```
 
-Install:
+Create the S3 secret once in the target namespace:
 
 ```bash
-helm upgrade --install mtg-meta-analyzer ./helm/mtg-meta-analyzer \
-  --namespace mtg-meta-analyzer --create-namespace \
-  --set version=1.2.0 \
-  --set replicaCount=1
+kubectl create secret generic s3-creds \
+  --from-literal=endpoint-url='https://example.invalid' \
+  --from-literal=region-name='fra1' \
+  --from-literal=bucket-name='your-bucket' \
+  --from-literal=access-key-id='your-access-key-id' \
+  --from-literal=secret-key='your-secret-key'
 ```
 
-Use a new immutable `version` tag for each deploy (do not keep `latest`) so image updates are deterministic.
+Install or upgrade the bootstrap chart:
+
+```bash
+helm upgrade --install karton-bootstrap ./helm/bootstrap --namespace karton -f ./helm/values.yaml
+```
+
+Install or upgrade the application chart:
+
+```bash
+helm upgrade --install karton ./helm --namespace karton -f ./helm/values.yaml
+```
+
+Use a new immutable `version` tag for each deploy so image updates are deterministic.
+
+## CI setup guide
+
+Create a base64 encoded kubeconfig and store it as the `KUBECONFIG_B64` GitHub secret.
+
+The bootstrap chart creates a namespace-local `ci-helm` service account, binds it to the `karton` namespace, and creates a long-lived token Secret named `ci-helm-token`.
+
+```yaml
+ci_access:
+  enabled: true
+  create_service_account: true
+  service_account_name: ci-helm
+  service_account_namespace: ""
+  create_token_secret: true
+  token_secret_name: ci-helm-token
+```
+
+After applying the bootstrap chart, generate the value with Nushell:
+
+```bash
+nu helm/scripts/generate-kubeconfig-b64.nu --server <SERVER_URL>
+```
+
+This prints the base64 encoded kubeconfig that you can paste as the value of the `KUBECONFIG_B64` GitHub secret.
+If the token is empty immediately after creating the Secret, wait a few seconds and run the command again.
 
 ## Database schema
 

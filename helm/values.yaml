@@ -1,8 +1,18 @@
-version: "2.3.0"
+version: "2.4.2"
 replicaCount: 2
+
 ingress:
   enabled: true
   domain: "karton.obencorp.dev"
+
+ci_access:
+  enabled: true
+  create_service_account: true
+  service_account_name: ci-helm
+  service_account_namespace: ""
+  create_token_secret: true
+  token_secret_name: ci-helm-token
+
 otel:
   enabled: true
   serviceName: "karton-web"

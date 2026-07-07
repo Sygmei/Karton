@@ -1,6 +1,6 @@
 apiVersion: v2
-name: mtg-meta-analyzer
+name: karton
 description: Helm chart for Karton (SvelteKit + Playwright + PostgreSQL)
 type: application
 version: 0.1.0
-appVersion: "0.1.0"
+appVersion: "2.4.1"

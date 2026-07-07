@@ -21,6 +21,13 @@ spec:
         karton/version: "{{ .Values.version }}"
         karton/release-revision: "{{ .Release.Revision }}"
     spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: "karton"
       containers:
         - name: "karton"
           image: "ghcr.io/sygmei/karton:{{ .Values.version }}"

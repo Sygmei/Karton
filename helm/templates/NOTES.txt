@@ -11,6 +11,15 @@ Create the Mythic Tools secret once in the target namespace:
     --from-literal=api-key='your-api-key' \
     --from-literal=web-key='your-web-key'
 
+Create the S3 secret once in the target namespace:
+
+  kubectl create secret generic s3-creds \
+    --from-literal=endpoint-url='https://example.invalid' \
+    --from-literal=region-name='fra1' \
+    --from-literal=bucket-name='your-bucket' \
+    --from-literal=access-key-id='your-access-key-id' \
+    --from-literal=secret-key='your-secret-key'
+
 Port-forward the app:
 
   kubectl port-forward svc/karton-service 3000:3000
