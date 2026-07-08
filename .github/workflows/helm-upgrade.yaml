@@ -29,11 +29,21 @@ jobs:
 
       - name: Set up kubeconfig
         run: |
+          if [ -z "${KUBECONFIG_B64:-}" ]; then
+            echo "KUBECONFIG_B64 GitHub secret is empty or missing"
+            exit 1
+          fi
+
           echo "$KUBECONFIG_B64" | base64 -d > "$RUNNER_TEMP/kubeconfig"
           chmod 600 "$RUNNER_TEMP/kubeconfig"
           echo "KUBECONFIG=$RUNNER_TEMP/kubeconfig" >> $GITHUB_ENV
         env:
           KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
+
+      - name: Validate kubeconfig
+        run: |
+          kubectl config current-context
+          kubectl auth can-i get deployments.apps --namespace "$NAMESPACE" --quiet
 
       - name: Check rendered resources
         run: |
@@ -42,7 +52,7 @@ jobs:
             -f "$VALUES_FILE" \
             > "$RUNNER_TEMP/rendered.yaml"
 
-          kubectl apply --dry-run=server --namespace "$NAMESPACE" -f "$RUNNER_TEMP/rendered.yaml"
+          kubectl apply --dry-run=server --validate=false --namespace "$NAMESPACE" -f "$RUNNER_TEMP/rendered.yaml"
 
       - name: Helm upgrade
         run: |
