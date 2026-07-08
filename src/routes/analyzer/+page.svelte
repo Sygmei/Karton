@@ -38,7 +38,7 @@
             url: string;
           };
           moxfieldDeck: {
-            source: "moxfield" | "archidekt";
+            source: "moxfield" | "archidekt" | "manabox";
             name: string;
             deckId: string;
             commanders: string[];
@@ -586,6 +586,7 @@
   }
 
   function deckSourceLabel(source: string | undefined): string {
+    if (source === "manabox") return "ManaBox";
     return source === "archidekt" ? "Archidekt" : "Moxfield";
   }
 
@@ -719,7 +720,7 @@
   <section class={`${panelClass} grid gap-5`}>
     <form method="POST" class="grid gap-4" use:enhance={enhanceSubmit}>
       <label class={fieldClass}>
-        <span class={labelTextClass}>Deck URL (Moxfield or Archidekt)</span>
+        <span class={labelTextClass}>Deck URL (Moxfield, Archidekt, or ManaBox)</span>
         <input
           class={inputClass}
           name="moxfieldUrl"
@@ -729,7 +730,7 @@
           autocorrect="off"
           spellcheck="false"
           required
-          placeholder="https://www.moxfield.com/decks/... or https://archidekt.com/decks/..."
+          placeholder="https://www.moxfield.com/decks/... or https://manabox.app/decks/..."
           value={values.moxfieldUrl}
         />
       </label>

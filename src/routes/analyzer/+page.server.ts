@@ -57,7 +57,9 @@ export const actions: Actions = {
     } catch (error) {
       const appError = isAppError(error) ? error : null;
       const status = appError?.httpStatusCode ?? 400;
-      const userError = appError?.userFacingError ?? 'Invalid deck URL. Use moxfield.com/decks/<id> or archidekt.com/decks/<id>.';
+      const userError =
+        appError?.userFacingError ??
+        'Invalid deck URL. Use moxfield.com/decks/<id>, archidekt.com/decks/<id>, or manabox.app/decks/<id>.';
       if (progressId) {
         await failProgress(progressId, userError);
       }

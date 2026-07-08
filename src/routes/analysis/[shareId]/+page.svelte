@@ -14,7 +14,12 @@
 
   type AnalysisTab = 'cut' | 'add' | 'keep';
   let activeAnalysisTab: AnalysisTab = 'cut';
-  $: deckSourceLabel = data.output.moxfieldDeck.source === 'archidekt' ? 'Archidekt' : 'Moxfield';
+  $: deckSourceLabel =
+    data.output.moxfieldDeck.source === 'manabox'
+      ? 'ManaBox'
+      : data.output.moxfieldDeck.source === 'archidekt'
+        ? 'Archidekt'
+        : 'Moxfield';
 
   const pageClass = "mx-auto grid w-[min(1200px,94vw)] gap-4 py-4 pb-12";
   const panelClass = "rounded border border-white/10 bg-stone-900/80 p-4";

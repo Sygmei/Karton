@@ -1,5 +1,6 @@
 import { AppError } from '../server/app-error';
 import { fetchArchidektDeck, normalizeArchidektDeckUrl } from './archidekt';
+import { fetchManaBoxDeck, normalizeManaBoxDeckUrl } from './manabox';
 import { fetchMoxfieldDeck, normalizeMoxfieldDeckUrl } from './moxfield';
 import type { DeckSource, InputDeck } from '../server/types';
 
@@ -29,7 +30,7 @@ export function normalizeSupportedDeckUrl(value: string): ResolvedDeckUrl {
     parsed = new URL(withScheme);
   } catch {
     throw new AppError({
-      userFacingError: 'Invalid deck URL. Use moxfield.com/decks/<id> or archidekt.com/decks/<id>.',
+      userFacingError: 'Invalid deck URL. Use moxfield.com/decks/<id>, archidekt.com/decks/<id>, or manabox.app/decks/<id>.',
       adminFacingError: `Deck URL parse failure: ${value}`,
       errorTypeName: 'DeckUrlInvalidError',
       httpStatusCode: 400
@@ -49,9 +50,15 @@ export function normalizeSupportedDeckUrl(value: string): ResolvedDeckUrl {
       normalizedUrl: normalizeArchidektDeckUrl(input)
     };
   }
+  if (host === 'manabox.app' || host === 'www.manabox.app') {
+    return {
+      source: 'manabox',
+      normalizedUrl: normalizeManaBoxDeckUrl(input)
+    };
+  }
 
   throw new AppError({
-    userFacingError: 'Unsupported deck host. Use moxfield.com or archidekt.com.',
+    userFacingError: 'Unsupported deck host. Use moxfield.com, archidekt.com, or manabox.app.',
     adminFacingError: `Unsupported deck host: ${host} input=${value}`,
     errorTypeName: 'DeckHostUnsupportedError',
     httpStatusCode: 400
@@ -62,6 +69,9 @@ export async function fetchInputDeckFromUrl(value: string, options: FetchInputDe
   const resolved = normalizeSupportedDeckUrl(value);
   if (resolved.source === 'moxfield') {
     return await fetchMoxfieldDeck(resolved.normalizedUrl, { headless: options.headless ?? true });
+  }
+  if (resolved.source === 'manabox') {
+    return await fetchManaBoxDeck(resolved.normalizedUrl);
   }
   return await fetchArchidektDeck(resolved.normalizedUrl);
 }

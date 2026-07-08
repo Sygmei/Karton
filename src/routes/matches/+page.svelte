@@ -89,6 +89,7 @@
 
   function sourceLabel(source: string): string {
     if (source === "mythic-tools") return "Mythic Tools";
+    if (source === "manabox") return "ManaBox";
     if (source === "archidekt") return "Archidekt";
     return "Moxfield";
   }
@@ -238,7 +239,7 @@
         <input
           class={inputClass}
           name="url"
-          placeholder="Moxfield, Archidekt, Mythic Tools"
+          placeholder="Moxfield, Archidekt, ManaBox, Mythic Tools"
           required
         />
       </label>

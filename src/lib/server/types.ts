@@ -1,6 +1,6 @@
 export type CardMap = Record<string, number>;
 
-export type DeckSource = 'moxfield' | 'archidekt';
+export type DeckSource = 'moxfield' | 'archidekt' | 'manabox';
 export type CardListSource = DeckSource | 'mythic-tools';
 
 export interface InputDeck {

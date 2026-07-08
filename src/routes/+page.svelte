@@ -17,7 +17,7 @@
   <PageHeader title={$t("home.title")} />
 
   <section class="grid gap-4 md:grid-cols-2">
-    <a class={cardClass} href="/analyzer">
+    <a class={cardClass} href="/analyzer" data-sveltekit-preload-code="eager" data-sveltekit-preload-data="hover">
       <p class={eyebrowClass}>Deck Analyzer</p>
       <h2 class="mt-2 text-xl font-bold">{$t("home.analyzerTitle")}</h2>
       <p class="mt-2 text-sm text-stone-400">
@@ -26,7 +26,7 @@
     </a>
 
     {#if $currentUser}
-      <a class={cardClass} href="/matches">
+      <a class={cardClass} href="/matches" data-sveltekit-preload-code="eager" data-sveltekit-preload-data="hover">
         <p class={eyebrowClass}>Matcher</p>
         <h2 class="mt-2 text-xl font-bold">{$t("home.matcherTitle")}</h2>
         <p class="mt-2 text-sm text-stone-400">

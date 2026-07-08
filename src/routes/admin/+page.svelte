@@ -552,7 +552,7 @@
               </label>
               <label class="grid gap-1">
                 <span class="text-sm text-stone-300">URL</span>
-                <input class={inputClass} name="url" placeholder="Moxfield, Archidekt, Mythic Tools" required />
+                <input class={inputClass} name="url" placeholder="Moxfield, Archidekt, ManaBox, Mythic Tools" required />
               </label>
               <button class={buttonClass} type="submit" disabled={addingManagedList}>
                 {addingManagedList ? "Adding..." : "Add"}

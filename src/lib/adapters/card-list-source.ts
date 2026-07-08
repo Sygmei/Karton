@@ -4,6 +4,7 @@ import {
   normalizeArchidektDeckUrl,
   normalizeArchidektFolderUrl
 } from './archidekt';
+import { fetchManaBoxCardList, normalizeManaBoxDeckUrl } from './manabox';
 import { fetchMoxfieldDeck, normalizeMoxfieldDeckUrl } from './moxfield';
 import { fetchMythicToolsList, normalizeMythicToolsListUrl } from './mythic-tools';
 import { AppError } from '../server/app-error';
@@ -18,7 +19,7 @@ interface ResolvedCardListUrl {
   normalizedUrl: string;
 }
 
-const SUPPORTED_CARD_LIST_SOURCE_TEXT = 'Moxfield, Archidekt, or Mythic Tools';
+const SUPPORTED_CARD_LIST_SOURCE_TEXT = 'Moxfield, Archidekt, ManaBox, or Mythic Tools';
 
 export function normalizeSupportedCardListUrl(value: string): ResolvedCardListUrl {
   const input = String(value || '').trim();
@@ -57,6 +58,9 @@ export function normalizeSupportedCardListUrl(value: string): ResolvedCardListUr
   if (host === 'mythic.tools' || host === 'www.mythic.tools') {
     return { source: 'mythic-tools', normalizedUrl: normalizeMythicToolsListUrl(input) };
   }
+  if (host === 'manabox.app' || host === 'www.manabox.app') {
+    return { source: 'manabox', normalizedUrl: normalizeManaBoxDeckUrl(input) };
+  }
 
   throw new AppError({
     userFacingError: `Unsupported list host. Use ${SUPPORTED_CARD_LIST_SOURCE_TEXT}.`,
@@ -77,6 +81,9 @@ export async function fetchCardListFromUrl(value: string, options: FetchCardList
       return await fetchArchidektFolderList(resolved.normalizedUrl);
     }
     return await fetchArchidektCardList(resolved.normalizedUrl);
+  }
+  if (resolved.source === 'manabox') {
+    return await fetchManaBoxCardList(resolved.normalizedUrl);
   }
   return await fetchMythicToolsList(resolved.normalizedUrl);
 }

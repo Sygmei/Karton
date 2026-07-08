@@ -59,7 +59,13 @@
 </script>
 
 <header class="sticky top-0 z-50 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 border-b border-lime-100/10 bg-[#0f1110] px-2 py-2 sm:px-5 sm:py-3 lg:grid-cols-[260px_minmax(0,1fr)_auto] lg:gap-3">
-  <a class="flex min-w-0 items-center gap-3 text-stone-100 no-underline" href="/" aria-label="Karton home">
+  <a
+    class="flex min-w-0 items-center gap-3 text-stone-100 no-underline"
+    href="/"
+    data-sveltekit-preload-code="eager"
+    data-sveltekit-preload-data="hover"
+    aria-label="Karton home"
+  >
     <img class="size-9 shrink-0 rounded border border-lime-100/20 bg-stone-950 object-contain p-1 sm:size-9" src="/icon.svg" alt="" aria-hidden="true" />
     <span class="hidden min-w-0 sm:grid">
       <strong class="truncate text-sm leading-tight">Karton</strong>
@@ -71,6 +77,8 @@
     <a
       class={`grid h-10 min-w-10 place-items-center rounded border px-2 text-center no-underline transition sm:min-h-[3.375rem] sm:min-w-11 sm:px-3 sm:py-2 ${pathname === "/" ? "border-lime-300 bg-lime-300 text-stone-950" : "border-lime-100/10 bg-stone-900 text-stone-400 hover:bg-stone-800 hover:text-stone-100"}`}
       href="/"
+      data-sveltekit-preload-code="eager"
+      data-sveltekit-preload-data="hover"
       on:pointerdown={() => markNavigation("/")}
       on:click={() => markNavigation("/")}
       aria-label={$t("nav.home")}
@@ -92,6 +100,8 @@
       <a
         class={`grid h-10 min-w-0 place-items-center rounded border px-2 text-center no-underline transition sm:min-h-[3.375rem] sm:px-3 sm:py-2 ${visibleNavItems.includes(item) ? "" : "invisible pointer-events-none"} ${item.match(pathname) ? "border-lime-300 bg-lime-300 text-stone-950" : "border-lime-100/10 bg-stone-900 text-stone-400 hover:bg-stone-800 hover:text-stone-100"}`}
         href={item.href}
+        data-sveltekit-preload-code="eager"
+        data-sveltekit-preload-data="hover"
         on:pointerdown={() => markNavigation(item.href)}
         on:click={() => markNavigation(item.href)}
         aria-current={item.match(pathname) ? "page" : undefined}
