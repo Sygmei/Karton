@@ -576,13 +576,19 @@
   function metroPillClass(stage: ProgressStageKey): string {
     const state = stageClass(stage);
     if (state === "done" || state === "active") {
-      return "grid min-w-10 place-items-center rounded bg-lime-300 px-3 py-1.5 text-xs font-black text-stone-950";
+      return "grid min-w-10 place-items-center rounded bg-primary-300 px-3 py-1.5 text-xs font-black text-stone-950";
     }
     return "grid min-w-10 place-items-center rounded border border-white/15 px-3 py-1.5 text-xs font-bold text-stone-400";
   }
 
   function analysisTabClass(tab: AnalysisTab): string {
-    return `rounded px-3 py-2 font-bold ${activeAnalysisTab === tab ? "bg-lime-300 text-stone-950" : "text-stone-300 hover:bg-stone-800"}`;
+    return `select-none rounded px-3 py-2 font-bold ${activeAnalysisTab === tab ? "bg-primary-300 text-stone-950" : "text-stone-300 hover:bg-stone-800"}`;
+  }
+
+  function activateAnalysisTabOnPointerDown(event: PointerEvent, tab: AnalysisTab): void {
+    if (event.button === 0) {
+      activeAnalysisTab = tab;
+    }
   }
 
   function deckSourceLabel(source: string | undefined): string {
@@ -678,8 +684,8 @@
   const inputClass = "w-full rounded border border-white/15 bg-stone-950 px-3 py-2 text-stone-100 placeholder:text-stone-600";
   const fieldClass = "grid gap-1";
   const labelTextClass = "text-sm font-semibold text-stone-300";
-  const buttonClass = "rounded bg-lime-300 px-4 py-2.5 font-black text-stone-950 disabled:opacity-50";
-  const eyebrowClass = "text-xs font-extrabold uppercase tracking-widest text-lime-300";
+  const buttonClass = "rounded bg-primary-300 px-4 py-2.5 font-black text-stone-950 disabled:opacity-50";
+  const eyebrowClass = "text-xs font-extrabold uppercase tracking-widest text-primary-300";
   const statLabelClass = "text-xs font-bold uppercase tracking-wider text-stone-400";
   const statValueClass = "mt-1 text-lg font-black text-stone-100";
   const skeletonBlockClass = "animate-pulse rounded bg-stone-950/80";
@@ -696,13 +702,13 @@
   />
 
   {#if isSubmitting}
-    <section class="sticky top-24 z-40 rounded border border-lime-200/30 bg-stone-950/95 p-4 shadow-2xl" aria-live="polite" aria-busy="true">
+    <section class="sticky top-24 z-40 rounded border border-primary-200/30 bg-stone-950/95 p-4 shadow-2xl" aria-live="polite" aria-busy="true">
       <div class="flex items-center justify-between gap-4">
         <p class="font-bold">Analyzing Deck ({progressStageLabel})</p>
-        <span class="text-sm font-black text-lime-300">{Math.round(progress)}%</span>
+        <span class="text-sm font-black text-primary-300">{Math.round(progress)}%</span>
       </div>
       <div class="mt-3 h-2 overflow-hidden rounded bg-stone-800">
-        <div class="h-full rounded bg-lime-300 transition-[width]" style={`width:${progress}%`}></div>
+        <div class="h-full rounded bg-primary-300 transition-[width]" style={`width:${progress}%`}></div>
       </div>
       <p class="mt-2 text-sm text-stone-400">{progressMessage}</p>
       <div class="mt-3 flex flex-wrap gap-2" aria-hidden="true">
@@ -794,7 +800,7 @@
       <p class="rounded border border-red-300/20 bg-red-950/30 p-3 text-red-200">{form.error}</p>
     {/if}
     {#if form?.traceId}
-      <p class="text-sm text-stone-400">Trace ID: <code class="rounded bg-stone-950 px-2 py-1 text-lime-300">{form.traceId}</code></p>
+      <p class="text-sm text-stone-400">Trace ID: <code class="rounded bg-stone-950 px-2 py-1 text-primary-300">{form.traceId}</code></p>
     {/if}
   </section>
 
@@ -822,7 +828,7 @@
         {#if previousAnalyses.length}
           <div class="grid gap-2">
             {#each previousAnalyses as analysis}
-              <a class="grid gap-1 rounded border border-white/10 bg-stone-950/60 p-3 text-stone-100 no-underline hover:border-lime-300/50" href={`/analysis/${analysis.shareId}`}>
+              <a class="grid gap-1 rounded border border-white/10 bg-stone-950/60 p-3 text-stone-100 no-underline hover:border-primary-300/50" href={`/analysis/${analysis.shareId}`}>
                 <strong>{analysis.commanderName || "Deck analysis"}</strong>
                 <span class="truncate text-sm text-stone-400">{analysis.moxfieldUrl}</span>
                 <small class="text-stone-500">
@@ -861,7 +867,7 @@
           <p class={statValueClass}>{output.moxfieldDeck.commanders.join(" / ")}</p>
           <p class="mt-1 text-sm text-stone-400">
             MtgTop8 match:
-            <a class="text-lime-300 no-underline hover:underline" href={output.commander.url} target="_blank" rel="noreferrer"
+            <a class="text-primary-300 no-underline hover:underline" href={output.commander.url} target="_blank" rel="noreferrer"
               >{output.commander.name}</a
             >
             ({output.commander.score.toFixed(2)})
@@ -890,9 +896,9 @@
         {#if output.share}
           <article class="rounded border border-white/10 bg-stone-950/60 p-4">
             <p class={statLabelClass}>Share</p>
-            <p class={statValueClass}><a class="text-lime-300 no-underline hover:underline" href={output.share.url}>{output.share.id}</a></p>
+            <p class={statValueClass}><a class="text-primary-300 no-underline hover:underline" href={output.share.url}>{output.share.id}</a></p>
             <p class="mt-1 text-sm text-stone-400">
-              <a class="text-lime-300 no-underline hover:underline" href={output.share.url} target="_blank" rel="noreferrer"
+              <a class="text-primary-300 no-underline hover:underline" href={output.share.url} target="_blank" rel="noreferrer"
                 >Open permalink</a
               >
             </p>
@@ -908,6 +914,7 @@
           type="button"
           role="tab"
           aria-selected={activeAnalysisTab === "cut"}
+          on:pointerdown={(event) => activateAnalysisTabOnPointerDown(event, "cut")}
           on:click={() => (activeAnalysisTab = "cut")}
         >
           Cut
@@ -917,6 +924,7 @@
           type="button"
           role="tab"
           aria-selected={activeAnalysisTab === "add"}
+          on:pointerdown={(event) => activateAnalysisTabOnPointerDown(event, "add")}
           on:click={() => (activeAnalysisTab = "add")}
         >
           Add
@@ -926,6 +934,7 @@
           type="button"
           role="tab"
           aria-selected={activeAnalysisTab === "keep"}
+          on:pointerdown={(event) => activateAnalysisTabOnPointerDown(event, "keep")}
           on:click={() => (activeAnalysisTab = "keep")}
         >
           Keep

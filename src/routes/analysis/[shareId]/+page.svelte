@@ -14,6 +14,13 @@
 
   type AnalysisTab = 'cut' | 'add' | 'keep';
   let activeAnalysisTab: AnalysisTab = 'cut';
+
+  function activateAnalysisTabOnPointerDown(event: PointerEvent, tab: AnalysisTab): void {
+    if (event.button === 0) {
+      activeAnalysisTab = tab;
+    }
+  }
+
   $: deckSourceLabel =
     data.output.moxfieldDeck.source === 'manabox'
       ? 'ManaBox'
@@ -23,10 +30,10 @@
 
   const pageClass = "mx-auto grid w-[min(1200px,94vw)] gap-4 py-4 pb-12";
   const panelClass = "rounded border border-white/10 bg-stone-900/80 p-4";
-  const eyebrowClass = "text-xs font-extrabold uppercase tracking-widest text-lime-300";
+  const eyebrowClass = "text-xs font-extrabold uppercase tracking-widest text-primary-300";
   const statLabelClass = "text-xs font-bold uppercase tracking-wider text-stone-400";
   const statValueClass = "mt-1 text-lg font-black text-stone-100";
-  const linkButtonClass = "rounded border border-lime-200/30 px-3 py-2 text-sm font-bold text-lime-300 no-underline hover:bg-lime-300 hover:text-stone-950";
+  const linkButtonClass = "rounded border border-primary-200/30 px-3 py-2 text-sm font-bold text-primary-300 no-underline hover:bg-primary-300 hover:text-stone-950";
 </script>
 
 <svelte:head>
@@ -44,16 +51,16 @@
       <p class="mt-3 flex flex-wrap items-center gap-2 text-stone-400">
         {#if data.ignoreBefore}
           <span>Ignore MtgTop8 decks before:</span>
-          <code class="rounded bg-stone-950 px-2 py-1 text-lime-300">{data.ignoreBefore}</code>
+          <code class="rounded bg-stone-950 px-2 py-1 text-primary-300">{data.ignoreBefore}</code>
         {/if}
         {#if data.ignoreAfter}
           <span>Ignore MtgTop8 decks after:</span>
-          <code class="rounded bg-stone-950 px-2 py-1 text-lime-300">{data.ignoreAfter}</code>
+          <code class="rounded bg-stone-950 px-2 py-1 text-primary-300">{data.ignoreAfter}</code>
         {/if}
       </p>
     {/if}
     <p class="mt-2 text-stone-400">
-      Share id: <code class="rounded bg-stone-950 px-2 py-1 text-lime-300">{data.shareId}</code>
+      Share id: <code class="rounded bg-stone-950 px-2 py-1 text-primary-300">{data.shareId}</code>
     </p>
     <div class="mt-4 flex flex-wrap gap-2">
       <a class={linkButtonClass} href="/analyzer" rel="noreferrer">New analysis</a>
@@ -67,7 +74,7 @@
       <article class="rounded border border-white/10 bg-stone-950/60 p-4">
         <p class={statLabelClass}>MtgTop8 Commander</p>
         <p class={statValueClass}>
-          <a class="text-lime-300 no-underline" href={data.output.commander.url} target="_blank" rel="noreferrer">{data.commanderName}</a>
+          <a class="text-primary-300 no-underline" href={data.output.commander.url} target="_blank" rel="noreferrer">{data.commanderName}</a>
         </p>
       </article>
       <article class="rounded border border-white/10 bg-stone-950/60 p-4">
@@ -84,28 +91,31 @@
   <section class={`${panelClass} grid gap-4`}>
     <div class="grid grid-cols-3 rounded border border-white/10 bg-stone-950 p-1" role="tablist" aria-label="Shared analysis views">
       <button
-        class={`rounded px-3 py-2 font-bold ${activeAnalysisTab === 'cut' ? "bg-lime-300 text-stone-950" : "text-stone-300 hover:bg-stone-800"}`}
+        class={`select-none rounded px-3 py-2 font-bold ${activeAnalysisTab === 'cut' ? "bg-primary-300 text-stone-950" : "text-stone-300 hover:bg-stone-800"}`}
         type="button"
         role="tab"
         aria-selected={activeAnalysisTab === 'cut'}
+        on:pointerdown={(event) => activateAnalysisTabOnPointerDown(event, 'cut')}
         on:click={() => (activeAnalysisTab = 'cut')}
       >
         Cut
       </button>
       <button
-        class={`rounded px-3 py-2 font-bold ${activeAnalysisTab === 'add' ? "bg-lime-300 text-stone-950" : "text-stone-300 hover:bg-stone-800"}`}
+        class={`select-none rounded px-3 py-2 font-bold ${activeAnalysisTab === 'add' ? "bg-primary-300 text-stone-950" : "text-stone-300 hover:bg-stone-800"}`}
         type="button"
         role="tab"
         aria-selected={activeAnalysisTab === 'add'}
+        on:pointerdown={(event) => activateAnalysisTabOnPointerDown(event, 'add')}
         on:click={() => (activeAnalysisTab = 'add')}
       >
         Add
       </button>
       <button
-        class={`rounded px-3 py-2 font-bold ${activeAnalysisTab === 'keep' ? "bg-lime-300 text-stone-950" : "text-stone-300 hover:bg-stone-800"}`}
+        class={`select-none rounded px-3 py-2 font-bold ${activeAnalysisTab === 'keep' ? "bg-primary-300 text-stone-950" : "text-stone-300 hover:bg-stone-800"}`}
         type="button"
         role="tab"
         aria-selected={activeAnalysisTab === 'keep'}
+        on:pointerdown={(event) => activateAnalysisTabOnPointerDown(event, 'keep')}
         on:click={() => (activeAnalysisTab = 'keep')}
       >
         Keep

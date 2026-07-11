@@ -24,7 +24,7 @@
   const navClass = "flex flex-wrap items-center gap-3 text-sm";
   const panelClass = "rounded border border-white/10 bg-stone-900/80 p-4";
   const buttonClass =
-    "rounded bg-lime-300 px-4 py-2 font-bold text-stone-950 disabled:opacity-50";
+    "rounded bg-primary-300 px-4 py-2 font-bold text-stone-950 disabled:opacity-50";
   const ghostButtonClass =
     "rounded border border-white/15 bg-transparent px-4 py-2 font-bold text-stone-100";
   const inputClass =
@@ -58,7 +58,7 @@
   {#if form?.error}
     <p class={`${panelClass} text-red-200`}>{form.error}</p>
   {:else if form?.success}
-    <p class={`${panelClass} text-lime-300`}>{form.success}</p>
+    <p class={`${panelClass} text-primary-300`}>{form.success}</p>
   {/if}
 
   {#if form?.generatedLink}

@@ -1,10 +1,10 @@
 <script lang="ts">
   export let title: string;
   export let subtitle: string | undefined = undefined;
-  export let tone: "lime" | "amber" = "lime";
+  export let tone: "primary" | "amber" = "primary";
 
   const accentClassByTone = {
-    lime: "bg-lime-300",
+    primary: "bg-primary-300",
     amber: "bg-amber-300",
   };
 </script>

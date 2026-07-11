@@ -4,9 +4,9 @@
   import { t } from "$lib/i18n";
 
   const cardClass =
-    "rounded border border-white/10 bg-stone-900/80 p-5 text-stone-100 no-underline transition hover:border-lime-300/50 hover:bg-stone-900";
+    "rounded border border-white/10 bg-stone-900/80 p-5 text-stone-100 no-underline transition hover:border-primary-300/50 hover:bg-stone-900";
   const eyebrowClass =
-    "text-xs font-extrabold uppercase tracking-widest text-lime-300";
+    "text-xs font-extrabold uppercase tracking-widest text-primary-300";
 </script>
 
 <svelte:head>

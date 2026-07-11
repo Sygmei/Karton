@@ -82,7 +82,7 @@
   const inputClass =
     "w-full rounded border border-white/15 bg-stone-950 px-3 py-2 text-stone-100";
   const buttonClass =
-    "h-10 rounded bg-lime-300 px-4 py-2 font-bold text-stone-950 disabled:opacity-50";
+    "h-10 rounded bg-primary-300 px-4 py-2 font-bold text-stone-950 disabled:opacity-50";
   const dangerButtonClass =
     "h-10 rounded bg-red-300 px-4 py-2 font-bold text-stone-950";
   const ghostButtonClass =
@@ -263,7 +263,7 @@
   {#if form?.error}
     <p class={`${panelClass} text-red-200`}>{form.error}</p>
   {:else if form?.success}
-    <p class={`${panelClass} text-lime-300`}>{form.success}</p>
+    <p class={`${panelClass} text-primary-300`}>{form.success}</p>
   {/if}
 
   <section class={`${panelClass} grid gap-4`}>
@@ -450,7 +450,7 @@
 
 {#if managedUserPromise}
   <div class="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
-    <section class="grid max-h-[90vh] w-full max-w-5xl overflow-hidden rounded border border-lime-100/20 bg-stone-950 shadow-2xl md:grid-cols-[220px_minmax(0,1fr)]">
+    <section class="grid max-h-[90vh] w-full max-w-5xl overflow-hidden rounded border border-primary-100/20 bg-stone-950 shadow-2xl md:grid-cols-[220px_minmax(0,1fr)]">
       {#await managedUserPromise}
         <aside class="border-b border-white/10 bg-stone-900/80 p-4 md:border-b-0 md:border-r">
           <span class={`${skeletonBlockClass} block h-6 w-32`}></span>
@@ -487,7 +487,7 @@
           {#if managedError}
             <p class="rounded border border-red-300/20 bg-red-950/30 p-3 text-red-200">{managedError}</p>
           {:else if managedSuccess}
-            <p class="rounded border border-lime-300/20 bg-lime-950/30 p-3 text-lime-200">{managedSuccess}</p>
+            <p class="rounded border border-primary-300/20 bg-primary-950/30 p-3 text-primary-200">{managedSuccess}</p>
           {/if}
 
           {#if activeManagedSection === "information"}
@@ -522,7 +522,7 @@
             {#if managed.analyses.length}
               <div class="grid gap-2">
                 {#each managed.analyses as analysis}
-                  <a class="grid gap-1 rounded border border-white/10 bg-stone-900/80 p-3 text-stone-100 no-underline hover:border-lime-300/50" href={`/analysis/${analysis.shareId}`}>
+                  <a class="grid gap-1 rounded border border-white/10 bg-stone-900/80 p-3 text-stone-100 no-underline hover:border-primary-300/50" href={`/analysis/${analysis.shareId}`}>
                     <strong>{analysis.commanderName || "Deck analysis"}</strong>
                     <span class="truncate text-sm text-stone-400">{analysis.moxfieldUrl}</span>
                     <small class="text-stone-500">

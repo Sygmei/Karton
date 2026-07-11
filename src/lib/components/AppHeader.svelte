@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { afterNavigate } from "$app/navigation";
+  import { afterNavigate, goto } from "$app/navigation";
   import { page } from "$app/stores";
 
   import { t, type TranslationKey } from "$lib/i18n";
@@ -56,17 +56,36 @@
       optimisticPath = href;
     }
   }
+
+  function navigateOnPointerDown(event: PointerEvent, href: string): void {
+    if (
+      event.pointerType !== "mouse" ||
+      event.button !== 0 ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.shiftKey
+    ) {
+      return;
+    }
+
+    markNavigation(href);
+    if (href !== currentPath) {
+      void goto(href);
+    }
+  }
 </script>
 
-<header class="sticky top-0 z-50 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 border-b border-lime-100/10 bg-[#0f1110] px-2 py-2 sm:px-5 sm:py-3 lg:grid-cols-[260px_minmax(0,1fr)_auto] lg:gap-3">
+<header class="sticky top-0 z-50 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 border-b border-primary-100/10 bg-[#0f1110] px-2 py-2 sm:px-5 sm:py-3 lg:grid-cols-[260px_minmax(0,1fr)_auto] lg:gap-3">
   <a
-    class="flex min-w-0 items-center gap-3 text-stone-100 no-underline"
+    class="flex min-w-0 select-none items-center gap-3 text-stone-100 no-underline"
     href="/"
+    draggable="false"
     data-sveltekit-preload-code="eager"
     data-sveltekit-preload-data="hover"
     aria-label="Karton home"
   >
-    <img class="size-9 shrink-0 rounded border border-lime-100/20 bg-stone-950 object-contain p-1 sm:size-9" src="/icon.svg" alt="" aria-hidden="true" />
+    <img class="size-9 shrink-0 rounded border border-primary-100/20 bg-stone-950 object-contain p-1 sm:size-9" src="/icon.svg" alt="" aria-hidden="true" />
     <span class="hidden min-w-0 sm:grid">
       <strong class="truncate text-sm leading-tight">Karton</strong>
       <small class="truncate text-[0.68rem] uppercase text-stone-400">{$t("nav.mtgTools")}</small>
@@ -75,11 +94,12 @@
 
   <nav class="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] gap-1 sm:gap-2 lg:justify-self-center lg:w-[min(560px,100%)]" aria-label="Application sections">
     <a
-      class={`grid h-10 min-w-10 place-items-center rounded border px-2 text-center no-underline transition sm:min-h-[3.375rem] sm:min-w-11 sm:px-3 sm:py-2 ${pathname === "/" ? "border-lime-300 bg-lime-300 text-stone-950" : "border-lime-100/10 bg-stone-900 text-stone-400 hover:bg-stone-800 hover:text-stone-100"}`}
+      class={`grid h-10 min-w-10 select-none place-items-center rounded border px-2 text-center no-underline transition sm:min-h-[3.375rem] sm:min-w-11 sm:px-3 sm:py-2 ${pathname === "/" ? "border-primary-300 bg-primary-300 text-stone-950" : "border-primary-100/10 bg-stone-900 text-stone-400 hover:bg-stone-800 hover:text-stone-100"}`}
       href="/"
+      draggable="false"
       data-sveltekit-preload-code="eager"
       data-sveltekit-preload-data="hover"
-      on:pointerdown={() => markNavigation("/")}
+      on:pointerdown={(event) => navigateOnPointerDown(event, "/")}
       on:click={() => markNavigation("/")}
       aria-label={$t("nav.home")}
       aria-current={pathname === "/" ? "page" : undefined}
@@ -98,11 +118,12 @@
     </a>
     {#each navItems as item}
       <a
-        class={`grid h-10 min-w-0 place-items-center rounded border px-2 text-center no-underline transition sm:min-h-[3.375rem] sm:px-3 sm:py-2 ${visibleNavItems.includes(item) ? "" : "invisible pointer-events-none"} ${item.match(pathname) ? "border-lime-300 bg-lime-300 text-stone-950" : "border-lime-100/10 bg-stone-900 text-stone-400 hover:bg-stone-800 hover:text-stone-100"}`}
+        class={`grid h-10 min-w-0 select-none place-items-center rounded border px-2 text-center no-underline transition sm:min-h-[3.375rem] sm:px-3 sm:py-2 ${visibleNavItems.includes(item) ? "" : "invisible pointer-events-none"} ${item.match(pathname) ? "border-primary-300 bg-primary-300 text-stone-950" : "border-primary-100/10 bg-stone-900 text-stone-400 hover:bg-stone-800 hover:text-stone-100"}`}
         href={item.href}
+        draggable="false"
         data-sveltekit-preload-code="eager"
         data-sveltekit-preload-data="hover"
-        on:pointerdown={() => markNavigation(item.href)}
+        on:pointerdown={(event) => navigateOnPointerDown(event, item.href)}
         on:click={() => markNavigation(item.href)}
         aria-current={item.match(pathname) ? "page" : undefined}
         aria-hidden={!visibleNavItems.includes(item)}

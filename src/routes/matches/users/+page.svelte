@@ -90,7 +90,7 @@
   >
     <div slot="actions" class="grid gap-3 sm:min-w-80">
       <a
-        class="w-fit rounded border border-white/15 bg-transparent px-4 py-2 text-sm font-bold text-stone-100 no-underline hover:border-lime-300/50"
+        class="w-fit rounded border border-white/15 bg-transparent px-4 py-2 text-sm font-bold text-stone-100 no-underline hover:border-primary-300/50"
         href="/matches"
       >
         {$t("nav.matcher")}
@@ -137,10 +137,10 @@
 
             <div class="grid gap-3 lg:grid-cols-2">
               <div class="grid content-start gap-2">
-                <h3 class="text-sm font-bold text-lime-300">{$t("matcher.lookingForShort")} ({buyerLists.length})</h3>
+                <h3 class="text-sm font-bold text-primary-300">{$t("matcher.lookingForShort")} ({buyerLists.length})</h3>
                 {#if buyerLists.length}
                   {#each buyerLists as list}
-                    <a class="grid min-w-0 rounded border border-white/10 bg-stone-950/60 p-3 text-stone-100 no-underline hover:border-lime-300/50" href={list.url} target="_blank" rel="noreferrer">
+                    <a class="grid min-w-0 rounded border border-white/10 bg-stone-950/60 p-3 text-stone-100 no-underline hover:border-primary-300/50" href={list.url} target="_blank" rel="noreferrer">
                       <strong class="truncate">{list.label || list.url}</strong>
                       <span class="truncate text-sm text-stone-400">{list.url}</span>
                     </a>
@@ -151,10 +151,10 @@
               </div>
 
               <div class="grid content-start gap-2">
-                <h3 class="text-sm font-bold text-lime-300">{$t("matcher.sellingShort")} ({sellerLists.length})</h3>
+                <h3 class="text-sm font-bold text-primary-300">{$t("matcher.sellingShort")} ({sellerLists.length})</h3>
                 {#if sellerLists.length}
                   {#each sellerLists as list}
-                    <a class="grid min-w-0 rounded border border-white/10 bg-stone-950/60 p-3 text-stone-100 no-underline hover:border-lime-300/50" href={list.url} target="_blank" rel="noreferrer">
+                    <a class="grid min-w-0 rounded border border-white/10 bg-stone-950/60 p-3 text-stone-100 no-underline hover:border-primary-300/50" href={list.url} target="_blank" rel="noreferrer">
                       <strong class="truncate">{list.label || list.url}</strong>
                       <span class="truncate text-sm text-stone-400">{list.url}</span>
                     </a>

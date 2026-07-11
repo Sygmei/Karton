@@ -1,5 +1,6 @@
 import { error } from '@sveltejs/kit';
 
+import { reconcileAnalysisCardNames } from '$lib/server/analysis';
 import { findAnalysisRunByShareId } from '$lib/server/analysis-runs-repo';
 import { withSpan } from '$lib/server/otel';
 
@@ -17,15 +18,18 @@ export const load: PageServerLoad = async ({ params, url }) => {
       throw error(404, 'Analysis not found');
     }
 
+    const analysis = reconcileAnalysisCardNames(run.payload.analysis);
+
     return {
       shareId: run.shareId,
       shareUrl: url.toString(),
       createdAt: run.createdAt,
       commanderName: run.commanderName || run.payload.commander.name,
-      ignoreBefore: run.ignoreBefore || run.payload.analysis.startDate,
-      ignoreAfter: run.ignoreAfter || run.payload.analysis.endDate,
+      ignoreBefore: run.ignoreBefore || analysis.startDate,
+      ignoreAfter: run.ignoreAfter || analysis.endDate,
       output: {
         ...run.payload,
+        analysis,
         share: {
           id: run.shareId,
           url: url.toString()

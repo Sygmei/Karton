@@ -138,11 +138,11 @@
   const inputClass =
     "w-full rounded border border-white/15 bg-stone-950 px-3 py-2 text-stone-100 placeholder:text-stone-600";
   const buttonClass =
-    "rounded bg-lime-300 px-4 py-2.5 font-black text-stone-950 disabled:opacity-50";
+    "rounded bg-primary-300 px-4 py-2.5 font-black text-stone-950 disabled:opacity-50";
   const dangerButtonClass =
     "rounded bg-red-300 px-3 py-2 text-sm font-bold text-stone-950";
   const eyebrowClass =
-    "text-xs font-extrabold uppercase tracking-widest text-lime-300";
+    "text-xs font-extrabold uppercase tracking-widest text-primary-300";
   const tableCellClass =
     "border-b border-white/10 px-3 py-2 text-left align-top";
   const skeletonBlockClass = "animate-pulse rounded bg-stone-950/80";
@@ -165,7 +165,7 @@
           {$t("matcher.findPeople")}
         </button>
         <a
-          class="rounded border border-white/15 bg-transparent px-4 py-2.5 font-bold text-stone-100 no-underline hover:border-lime-300/50"
+          class="rounded border border-white/15 bg-transparent px-4 py-2.5 font-bold text-stone-100 no-underline hover:border-primary-300/50"
           href="/matches/users"
         >
           {$t("matcher.viewAllUsers")}
@@ -189,7 +189,7 @@
           </button>
         </form>
         <a
-          class="rounded border border-white/15 bg-transparent px-4 py-2.5 font-bold text-stone-100 no-underline hover:border-lime-300/50"
+          class="rounded border border-white/15 bg-transparent px-4 py-2.5 font-bold text-stone-100 no-underline hover:border-primary-300/50"
           href="/matches/users"
         >
           {$t("matcher.viewAllUsers")}
@@ -203,7 +203,7 @@
   {:else}
     <div class="flex flex-wrap items-center gap-3">
       <a
-        class="rounded border border-white/15 bg-transparent px-4 py-2.5 font-bold text-stone-100 no-underline hover:border-lime-300/50"
+        class="rounded border border-white/15 bg-transparent px-4 py-2.5 font-bold text-stone-100 no-underline hover:border-primary-300/50"
         href="/matches/users"
       >
         {$t("matcher.viewAllUsers")}
@@ -335,7 +335,7 @@
           <div class="flex flex-wrap items-center gap-4">
             <label class="flex items-center gap-2 text-sm text-stone-300">
               <input
-                class="size-4 accent-lime-300"
+                class="size-4 accent-primary-300"
                 type="checkbox"
                 on:change={toggleAllPeople}
                 checked={adminUsers.length > 0 &&
@@ -368,7 +368,7 @@
                 class="flex items-center gap-3 rounded border border-white/10 bg-stone-950/60 p-3"
               >
                 <input
-                  class="size-4 accent-lime-300"
+                  class="size-4 accent-primary-300"
                   type="checkbox"
                   name="userIds"
                   value={user.id}
@@ -409,14 +409,14 @@
       <p>{form.error}</p>
       {#if form?.traceId}
         <p class="mt-2 text-sm text-stone-400">
-          Trace ID: <code class="rounded bg-stone-950 px-2 py-1 text-lime-300"
+          Trace ID: <code class="rounded bg-stone-950 px-2 py-1 text-primary-300"
             >{form.traceId}</code
           >
         </p>
       {/if}
     </section>
   {:else if form?.success}
-    <section class={`${panelClass} text-lime-300`}>
+    <section class={`${panelClass} text-primary-300`}>
       <p>{form.success}</p>
     </section>
   {/if}
@@ -512,7 +512,7 @@
   <div class="flex flex-wrap gap-2">
     {#each items as item}
       <a
-        class="rounded bg-stone-950 px-2 py-1 text-xs text-lime-300 no-underline hover:underline"
+        class="rounded bg-stone-950 px-2 py-1 text-xs text-primary-300 no-underline hover:underline"
         href={item.url}
         target="_blank"
         rel="noreferrer">{item.listName} ({item.quantity})</a
@@ -531,7 +531,7 @@
       <span class="text-xs uppercase tracking-wider text-stone-400"
         >Matches</span
       >
-      <strong class="text-2xl text-lime-300"
+      <strong class="text-2xl text-primary-300"
         >{result.totals.matchedCards}</strong
       >
       <small class="text-stone-400"
@@ -542,7 +542,7 @@
       <span class="text-xs uppercase tracking-wider text-stone-400"
         >Buyer demand</span
       >
-      <strong class="text-2xl text-lime-300"
+      <strong class="text-2xl text-primary-300"
         >{result.totals.uniqueBuyerCards}</strong
       >
       <small class="text-stone-400"
@@ -553,7 +553,7 @@
       <span class="text-xs uppercase tracking-wider text-stone-400"
         >Seller supply</span
       >
-      <strong class="text-2xl text-lime-300"
+      <strong class="text-2xl text-primary-300"
         >{result.totals.uniqueSellerCards}</strong
       >
       <small class="text-stone-400"
@@ -617,7 +617,7 @@
         {#if traceId}
           <span class="text-xs text-stone-300"
             >Trace ID: <code
-              class="rounded bg-stone-950 px-2 py-1 text-lime-300"
+              class="rounded bg-stone-950 px-2 py-1 text-primary-300"
               >{traceId}</code
             ></span
           >
