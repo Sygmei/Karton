@@ -7,8 +7,6 @@
   import type { PageData, ActionData } from './$types';
   export let data: PageData;
   export let form: ActionData;
-  $: activeIds = new Set(data.roster.filter((member) => member.active).map((member) => member.userId));
-  $: availableAccounts = data.accounts.filter((account) => !activeIds.has(account.id));
 </script>
 
 <svelte:head><title>{data.league.name} - Karton</title></svelte:head>
@@ -52,7 +50,7 @@
         <tbody>{#each data.standings as row}<tr class:t-me={data.mine?.memberId === row.memberId}>
           <td class="font-bold" class:t-accent={row.rank <= 3}>#{row.rank}</td>
           <td><span class="font-bold">{row.name}</span> {#if data.mine?.memberId === row.memberId}<span class="t-badge">{$t('tournament.you')}</span>{/if}
-            {#if !row.active || !row.userId}<span class="t-muted"> · {$t('tournament.former')}</span>{/if}</td>
+            {#if !row.userId}<span class="t-muted"> · {$t('tournament.former')}</span>{/if}</td>
           <td class="font-bold tabular-nums">{row.points}</td><td>{row.attendance}</td>
         </tr>{/each}</tbody>
       </table></div>
@@ -80,26 +78,6 @@
             <label class="t-label">{$t('tournament.eventDate')}<input class="t-input" name="eventDate" type="date" min={data.league.startsOn} max={data.league.endsOn} required /></label>
             <div><button type="submit" class="t-button"><Icon name="plus" />{$t('tournament.createEvent')}</button></div>
           </form>
-        </section>
-        <section class="t-panel t-stack">
-          <h2 class="t-heading">{$t('tournament.managePlayers')}</h2>
-          <form method="POST" action="?/addMember" use:enhance class="t-stack">
-            <label class="t-label">{$t('tournament.player')}
-              <select class="t-input" name="userId" required><option value="">{$t('tournament.selectPlayer')}</option>
-                {#each availableAccounts as account}<option value={account.id}>{account.name} (@{account.username})</option>{/each}
-              </select>
-            </label>
-            <div><button class="t-button" type="submit" disabled={!availableAccounts.length}><Icon name="plus" />{$t('tournament.addPlayer')}</button></div>
-          </form>
-          <p class="t-muted">{$t('tournament.preserveResults')}</p>
-          <ul class="t-stack">{#each data.roster.filter((member) => member.active && member.userId) as member}
-            <li class="t-row t-between"><span class="break-words min-w-0">{member.name}</span>
-              <form method="POST" action="?/removeMember" use:enhance>
-                <input type="hidden" name="memberId" value={member.id} />
-                <button type="submit" class="ui-icon-button ui-icon-danger" aria-label={`${$t('tournament.removePlayer')} ${member.name}`} title={$t('tournament.removePlayer')}><Icon name="trash" /></button>
-              </form>
-            </li>
-          {/each}</ul>
         </section>
       </div>
     {/if}

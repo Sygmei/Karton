@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { check, foreignKey, boolean, bigserial, date, doublePrecision, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import type { SwissState } from '../swiss';
 import type { AnalyzeOutput } from './types';
 
 export const mtgtop8Commanders = pgTable(
@@ -191,6 +192,8 @@ export const tournamentEvents = pgTable('tournament_events', {
   status: text('status').$type<'draft' | 'published'>().notNull().default('draft'),
   revision: integer('revision').notNull().default(0),
   scoringVersion: text('scoring_version').notNull().default('log2-2.5-v1'),
+  swiss: jsonb('swiss').$type<SwissState>(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 }, (table) => [
@@ -220,6 +223,8 @@ export const tournamentResults = pgTable('tournament_results', {
 ]);
 
 export type TournamentSnapshot = {
+  deleted?: boolean;
+  swiss?: SwissState | null;
   name: string;
   eventDate: string;
   status: 'draft' | 'published';

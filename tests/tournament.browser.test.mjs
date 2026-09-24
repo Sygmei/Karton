@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { commanderCard, compatibleCommanders } from '../src/lib/commanders.ts';
 import postgres from 'postgres';
 import { chromium } from 'playwright';
@@ -9,7 +9,7 @@ import { chromium } from 'playwright';
 const baseURL = process.env.TEST_BASE_URL;
 const databaseURL = process.env.TEST_DATABASE_URL;
 
-test('admin and player tournament browser flow', { skip: !baseURL || !databaseURL, timeout: 90000 }, async () => {
+test('admin and player tournament browser flow', { skip: !baseURL || !databaseURL, timeout: 180000 }, async () => {
   const db = postgres(databaseURL, { max: 1 });
   const browser = await chromium.launch({ headless: true, channel: process.env.TEST_BROWSER_CHANNEL });
   const prefix = randomUUID().slice(0, 8);
@@ -17,6 +17,7 @@ test('admin and player tournament browser flow', { skip: !baseURL || !databaseUR
     username: `browser-${prefix}-${index}`, role: index === 0 ? 'admin' : 'user', token: randomUUID() }));
   const [admin, player] = users;
   const errors = [];
+  const ready = (page) => page.locator('header .user-menu').waitFor();
   let leagueId;
   const screenshots = process.env.TEST_SCREENSHOTS_DIR;
   try {
@@ -38,7 +39,7 @@ test('admin and player tournament browser flow', { skip: !baseURL || !databaseUR
     });
     const page = await adminContext.newPage();
     page.on('pageerror', (error) => errors.push(error.message));
-    await page.goto('/tournament');
+    await page.goto('/tournament'); await ready(page);
     await page.getByRole('heading', { name: 'Tournament', exact: true }).waitFor();
     const create = page.locator('form[action="?/create"]');
     if (!await create.isVisible()) await page.getByText('Create a league', { exact: true }).click();
@@ -49,20 +50,24 @@ test('admin and player tournament browser flow', { skip: !baseURL || !databaseUR
     await create.getByRole('button', { name: 'Create league', exact: true }).click();
     await page.waitForURL(/\/tournament\/[^/]+$/);
     leagueId = new URL(page.url()).pathname.split('/')[2];
-    for (const user of users.slice(0, 6)) {
-      await page.locator('select[name="userId"]').selectOption(user.id);
-      await page.getByRole('button', { name: 'Add player', exact: true }).click();
-      await page.getByRole('button', { name: `Remove ${user.name}`, exact: true }).waitFor();
-    }
-    const roster = await db`SELECT id, user_id FROM tournament_members WHERE league_id = ${leagueId}`;
-    const members = users.slice(0, 6).map((user) => ({ ...user, memberId: roster.find((row) => row.user_id === user.id).id }));
+    assert.equal(await page.locator('form[action="?/addMember"]').count(), 0);
+    const members = users.slice(0, 6).map((user) => ({ ...user, memberId: `user:${user.id}` }));
     const createEvent = page.locator('form[action="?/createEvent"]');
     await createEvent.locator('[name="name"]').fill('September opening event');
     await createEvent.locator('[name="eventDate"]').fill('2026-09-12');
     await createEvent.getByRole('button').click();
     await page.waitForURL(/\/events\/[^/]+$/);
     const eventURL = page.url();
-    for (let i = 0; i < members.length; i++) await page.locator(`[name="rank:${members[i].memberId}"]`).fill(String(i + 1));
+    assert.equal(await page.getByRole('button', { name: 'Enter results', exact: true }).isDisabled(), true);
+    assert.equal(await page.getByRole('button', { name: 'Run Swiss rounds', exact: true }).isDisabled(), true);
+    assert.equal(await page.getByRole('table', { name: 'Points preview', exact: true }).count(), 0);
+    assert.equal(await page.locator('[name="roundCount"]').count(), 0);
+    for (let i = 0; i < members.length; i++) {
+      if (i >= 2) await page.getByRole('button', { name: 'Add player', exact: true }).click();
+      const picker = page.getByRole('combobox', { name: `Player ${i + 1}`, exact: true });
+      await picker.fill(members[i].name);
+      await page.getByRole('option').filter({ hasText: `@${members[i].username}` }).click();
+    }
     const commanderNames = ['Ellie, Brick Master + Ellie, Vengeful Hunter', 'Nissa, Resurgent Animist', 'Slimefoot and Squee',
       'Juri, Master of the Revue', 'Terra, Herald of Hope', 'Asmoranomardicadaistinaculdacar'];
     const primaryInput = (member) => page.locator(`[id="commander-${member.memberId}"]`);
@@ -112,16 +117,27 @@ test('admin and player tournament browser flow', { skip: !baseURL || !databaseUR
       await selectCard(primaryInput(members[i]), primary);
       if (secondary) await selectCard(secondInput(members[i]), secondary);
     }
+    await page.getByRole('button', { name: 'Run Swiss rounds', exact: true }).click();
+    assert.equal(await page.locator(`[name="commanders:${members[0].id}"]`).inputValue(), commanderNames[0]);
+    assert.equal(await page.getByRole('combobox', { name: 'Player 1', exact: true }).inputValue(), members[0].name);
+    await page.getByRole('button', { name: 'Enter results', exact: true }).click();
+    assert.equal(await page.locator('[name="roundCount"]').count(), 0);
+    await page.getByRole('button', { name: 'Move down #1', exact: true }).click();
+    assert.equal(await page.getByRole('combobox', { name: 'Player #2', exact: true }).inputValue(), members[0].name);
+    assert.equal(await page.locator(`[name="commanders:${members[0].memberId}"]`).inputValue(), commanderNames[0]);
+    await page.getByRole('button', { name: 'Move up #2', exact: true }).click();
     const preview = page.getByRole('table', { name: 'Points preview', exact: true });
     assert.deepEqual(await preview.locator('tbody tr td:last-child').allTextContents(), ['+7', '+4', '+3', '+2', '+1', '+1']);
     await page.getByRole('button', { name: 'Save draft', exact: true }).click();
     await page.getByRole('status').filter({ hasText: 'Changes saved.' }).waitFor();
+    const roster = await db`SELECT id, user_id FROM tournament_members WHERE league_id = ${leagueId}`;
+    for (const member of members) member.memberId = roster.find((row) => row.user_id === member.id).id;
 
     const playerContext = await browser.newContext({ baseURL, locale: 'en-US', viewport: { width: 390, height: 844 } });
     await playerContext.addCookies([{ name: 'mtg_meta_session', value: player.token, url: baseURL }]);
     const playerPage = await playerContext.newPage();
     playerPage.on('pageerror', (error) => errors.push(error.message));
-    await playerPage.goto(eventURL);
+    await playerPage.goto(eventURL); await ready(playerPage);
     await playerPage.getByText('Results have not been published yet.').waitFor();
     assert.equal(await playerPage.locator('input[name^="rank:"]').count(), 0);
     await page.getByRole('button', { name: 'Publish results', exact: true }).click();
@@ -129,13 +145,16 @@ test('admin and player tournament browser flow', { skip: !baseURL || !databaseUR
     await results.waitFor();
     assert.deepEqual(await results.locator('tbody tr td:last-child').allTextContents(), ['+7', '+4', '+3', '+2', '+1', '+1']);
     assert.deepEqual(await results.locator('tbody tr td:nth-child(2) span').allTextContents(), commanderNames);
-    await page.locator(`[name="rank:${members[0].memberId}"]`).fill('2');
+    const firstPlace = page.getByRole('combobox', { name: 'Player #1', exact: true });
+    const secondPlace = page.getByRole('combobox', { name: 'Player #2', exact: true });
+    await firstPlace.fill(''); await secondPlace.fill('');
     assert.equal(await page.getByRole('button', { name: 'Publish corrections' }).isDisabled(), true);
-    await page.locator(`[name="rank:${members[1].memberId}"]`).fill('1');
+    await firstPlace.fill('Camille'); await page.getByRole('option').filter({ hasText: `@${members[1].username}` }).click();
+    await secondPlace.fill('Alex'); await page.getByRole('option').filter({ hasText: `@${members[0].username}` }).click();
     await page.locator('[name="reason"]').fill('Corrected the final standings.');
     await page.getByRole('button', { name: 'Publish corrections', exact: true }).click();
     await page.waitForFunction(() => document.querySelector('table[aria-label="Results"] tbody tr td:nth-child(2)')?.textContent?.startsWith('Camille'));
-    assert.equal(await page.locator('[name="revision"]').inputValue(), '3');
+    assert.equal(await page.locator('form[action="?/save"] [name="revision"]').inputValue(), '3');
 
     const unauthorized = await playerContext.request.post(`${eventURL}?/save`, { form: { name: 'Forbidden', eventDate: '2026-09-12', revision: '3', status: 'draft' }, headers: { origin: baseURL } });
     const denied = await unauthorized.json();
@@ -143,7 +162,7 @@ test('admin and player tournament browser flow', { skip: !baseURL || !databaseUR
     assert.equal(denied.status, 401);
     assert.equal((await playerContext.request.get('/tournament/commanders?q=Ellie')).status(), 403);
     assert.equal((await adminContext.request.get('/tournament/commanders?with=invalid')).status(), 400);
-    await playerPage.goto(`/tournament/${leagueId}`);
+    await playerPage.goto(`/tournament/${leagueId}`); await ready(playerPage);
     await playerPage.getByRole('heading', { name: 'My progress' }).waitFor();
     await playerPage.getByText('Nissa, Resurgent Animist', { exact: true }).waitFor();
     const standings = playerPage.getByRole('table', { name: 'Standings', exact: true });
@@ -156,13 +175,14 @@ test('admin and player tournament browser flow', { skip: !baseURL || !databaseUR
     assert.equal(await playerPage.locator('.t-table-wrap').evaluateAll((wrappers) => wrappers.some((el) => el.scrollWidth > el.clientWidth)), false);
     assert.equal(await playerPage.locator('header nav a span').evaluateAll((labels) => labels.some((el) => el.scrollWidth > el.clientWidth)), false);
     if (screenshots) await playerPage.screenshot({ path: `${screenshots}/league-player-320.png`, fullPage: true });
-    await page.goto(`/tournament/${leagueId}`);
+    await page.goto(`/tournament/${leagueId}`); await ready(page);
     if (screenshots) await page.screenshot({ path: `${screenshots}/league-admin-desktop.png`, fullPage: true });
-    await page.goto(eventURL);
+    await page.goto(eventURL); await ready(page);
     await secondInput(first).waitFor();
     assert.equal(await secondInput(first).inputValue(), 'Ellie, Vengeful Hunter');
     if (screenshots) await page.screenshot({ path: `${screenshots}/event-admin-desktop.png`, fullPage: true });
     await page.setViewportSize({ width: 320, height: 740 });
+    await primaryInput(first).click();
     await primaryInput(first).fill('Ellie');
     await page.getByRole('option').first().waitFor();
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
@@ -172,7 +192,7 @@ test('admin and player tournament browser flow', { skip: !baseURL || !databaseUR
     await page.getByRole('option').filter({ hasText: 'Ellie, Brick Master' }).click();
     assert.equal(await primaryInput(first).inputValue(), 'Ellie, Brick Master');
     await page.setViewportSize({ width: 1440, height: 1000 });
-    await playerPage.goto(eventURL);
+    await playerPage.goto(eventURL); await ready(playerPage);
     const playerResults = playerPage.getByRole('table', { name: 'Results', exact: true });
     await playerResults.getByText('Asmoranomardicadaistinaculdacar', { exact: true }).waitFor();
     assert.equal(await playerPage.locator('.t-table-wrap').evaluateAll((wrappers) => wrappers.some((el) => el.scrollWidth > el.clientWidth)), false);
@@ -181,11 +201,176 @@ test('admin and player tournament browser flow', { skip: !baseURL || !databaseUR
     const visitorContext = await browser.newContext({ baseURL, locale: 'fr-FR', viewport: { width: 390, height: 844 } });
     await visitorContext.addCookies([{ name: 'mtg_meta_session', value: users[6].token, url: baseURL }]);
     const visitorPage = await visitorContext.newPage();
-    await visitorPage.goto(`/tournament/${leagueId}`);
+    await visitorPage.goto(`/tournament/${leagueId}`); await ready(visitorPage);
     await visitorPage.getByRole('heading', { name: 'Classement', exact: true }).waitFor();
     assert.equal(await visitorPage.getByRole('heading', { name: 'Ma progression', exact: true }).count(), 0);
     assert.equal(await visitorPage.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     if (screenshots) await visitorPage.screenshot({ path: `${screenshots}/league-visitor-fr.png`, fullPage: true });
+    // Run a three-player, two-round Swiss event entirely through the UI.
+    await page.goto(`/tournament/${leagueId}`); await ready(page);
+    await page.locator('form[action="?/createEvent"] [name="name"]').fill('Swiss evening');
+    await page.locator('form[action="?/createEvent"] [name="eventDate"]').fill('2026-09-23');
+    await page.locator('form[action="?/createEvent"] button').click();
+    await page.waitForURL(/\/events\/[^/]+$/);
+    const swissURL = page.url();
+    await page.setViewportSize({ width: 320, height: 740 });
+    assert.equal(await page.getByRole('button', { name: 'Run Swiss rounds', exact: true }).isDisabled(), true);
+    await page.getByRole('button', { name: 'Add player', exact: true }).click();
+    for (let i = 0; i < 3; i++) {
+      const picker = page.getByRole('combobox', { name: `Player ${i + 1}`, exact: true });
+      await picker.click();
+      await picker.fill(members[i].username);
+      await page.getByRole('option').filter({ hasText: `@${members[i].username}` }).waitFor();
+      const bounds = await page.getByRole('listbox').boundingBox();
+      assert.ok(bounds.y >= 0 && bounds.y + bounds.height <= 740);
+      await picker.press('ArrowDown'); await picker.press('Enter');
+    }
+    await selectCard(primaryInput(members[0]), 'Nissa, Resurgent Animist');
+    await page.evaluate(() => { document.activeElement?.blur(); window.scrollTo(0, 0); });
+    if (screenshots) await page.screenshot({ path: `${screenshots}/player-list-first-mobile.png`, fullPage: true });
+    await page.getByRole('button', { name: 'Enter results', exact: true }).click();
+    assert.equal(await page.getByRole('combobox', { name: 'Player #1', exact: true }).inputValue(), members[0].name);
+    await page.getByRole('button', { name: 'Run Swiss rounds', exact: true }).click();
+    assert.equal(await page.locator(`[name="commanders:${members[0].id}"]`).inputValue(), 'Nissa, Resurgent Animist');
+    await page.locator('[name="roundCount"]').fill('2');
+    await page.getByRole('button', { name: 'Generate first round', exact: true }).click();
+    await page.getByText('Round 1 / 2', { exact: true }).waitFor();
+    const timer = page.locator('time[aria-label="Elapsed since last pairing"]');
+    await timer.waitFor();
+    await page.waitForFunction(() => document.querySelector('time[aria-label="Elapsed since last pairing"]')?.textContent !== '00:00:00');
+    assert.equal(await page.getByRole('button', { name: 'Generate next round', exact: true }).isDisabled(), true);
+    await playerPage.goto(swissURL); await ready(playerPage);
+    await playerPage.getByRole('table', { name: 'Swiss standings' }).waitFor();
+    assert.equal(await playerPage.getByRole('button', { name: 'Generate next round', exact: true }).count(), 0);
+    assert.equal(await playerPage.getByRole('button', { name: 'Delete tournament', exact: true }).count(), 0);
+    assert.equal(await playerPage.locator('time').count(), 1);
+    const swissId = new URL(swissURL).pathname.split('/').at(-1);
+    const [{ swiss: originalSwiss }] = await db`SELECT swiss FROM tournament_events WHERE id = ${swissId}`;
+    assert.equal(originalSwiss.players.find((p) => p.memberId === members[0].memberId).commanders, 'Nissa, Resurgent Animist');
+    const firstMatch = originalSwiss.rounds[0].matches[0];
+    const reporter = members.find((member) => member.id !== admin.id && [firstMatch.a, firstMatch.b].includes(member.memberId));
+    const reportContext = await browser.newContext({ baseURL, locale: 'en-US', viewport: { width: 320, height: 740 } });
+    await reportContext.addCookies([{ name: 'mtg_meta_session', value: reporter.token, url: baseURL }]);
+    const reportPage = await reportContext.newPage(); reportPage.on('pageerror', (error) => errors.push(error.message));
+    await reportPage.goto(swissURL); await ready(reportPage);
+    assert.equal(await reportPage.locator('.score-button').count(), 2);
+    assert.equal(await reportPage.getByRole('button', { name: 'Generate next round', exact: true }).count(), 0);
+    const reportButtons = reportPage.locator('.score-button');
+    await reportButtons.nth(0).click(); await reportButtons.nth(0).click();
+    assert.equal(await reportPage.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    if (screenshots) await reportPage.screenshot({ path: `${screenshots}/player-score-mobile.png`, fullPage: true });
+    await reportPage.getByRole('button', { name: 'Save score', exact: true }).click();
+    await reportPage.getByText('Changes saved.', { exact: true }).waitFor();
+    let [{ swiss: reported }] = await db`SELECT swiss FROM tournament_events WHERE id = ${swissId}`;
+    assert.equal(reported.rounds[0].matches[0].outcome, 'a');
+    const staleReport = await reportContext.request.post(`${swissURL}?/reportScore`, { form: {
+      round: '1', match: '0', matchRevision: '0', score: JSON.stringify({ aWins: 0, bWins: 2, finished: false }) }, headers: { origin: baseURL } });
+    assert.equal((await staleReport.json()).status, 409);
+    const playerAdvance = await reportContext.request.post(`${swissURL}?/swiss`, { form: { operation: 'next', revision: '2' }, headers: { origin: baseURL } });
+    assert.equal((await playerAdvance.json()).status, 401);
+    const playerDelete = await reportContext.request.post(`${swissURL}?/delete`, { form: { confirm: 'delete', revision: '2' }, headers: { origin: baseURL } });
+    assert.equal((await playerDelete.json()).status, 401);
+    await visitorPage.goto(swissURL); await ready(visitorPage);
+    assert.equal(await visitorPage.locator('.score-button').count(), 0);
+    const outsiderReport = await visitorContext.request.post(`${swissURL}?/reportScore`, { form: {
+      round: '1', match: '0', matchRevision: '1', score: JSON.stringify({ aWins: 0, bWins: 2, finished: false }) }, headers: { origin: baseURL } });
+    assert.equal((await outsiderReport.json()).status, 403);
+    // Return this match to 0–0 and let the organizer enter the round results below.
+    await reportButtons.nth(0).click();
+    await reportPage.getByRole('button', { name: 'Save score', exact: true }).click();
+    await reportPage.waitForFunction(() => document.querySelector('input[name="matchRevision"]')?.value === '2');
+
+    await page.reload(); await ready(page);
+    const scoreboard = page.locator('[data-scoreboard="0"]');
+    const counters = () => scoreboard.locator('.score-button');
+    await counters().nth(0).click();
+    assert.equal(await page.getByRole('button', { name: 'Generate next round', exact: true }).isDisabled(), false);
+    await counters().nth(0).click();
+    assert.equal(await page.getByRole('button', { name: 'Generate next round', exact: true }).isDisabled(), false);
+    assert.equal(await scoreboard.locator('.winner').count(), 1);
+    await counters().nth(0).click();
+    assert.deepEqual(await counters().allTextContents(), ['0', '0']);
+    assert.equal(await scoreboard.locator('.winner').count(), 0);
+    assert.equal(await page.getByRole('button', { name: 'Generate next round', exact: true }).isDisabled(), true);
+    await counters().nth(0).click();
+    await counters().nth(1).click();
+    assert.equal(await page.getByRole('button', { name: 'Generate next round', exact: true }).isDisabled(), false);
+    assert.equal(await page.getByRole('checkbox').count(), 0);
+    await page.getByRole('button', { name: 'Save match results', exact: true }).click();
+    await page.getByText('Changes saved.', { exact: true }).waitFor();
+    const [{ swiss: savedSwiss }] = await db`SELECT swiss FROM tournament_events WHERE id = ${swissId}`;
+    assert.equal(savedSwiss.rounds[0].pairedAt, originalSwiss.rounds[0].pairedAt);
+    assert.deepEqual(savedSwiss.rounds[0].matches[0].score, { aWins: 1, bWins: 1, finished: false });
+    await page.reload(); await ready(page);
+    assert.deepEqual(await counters().allTextContents(), ['1', '1']);
+    await playerPage.reload(); await ready(playerPage);
+    if (await playerPage.locator('.score-button').count()) assert.deepEqual(await playerPage.locator('.score-button').allTextContents(), ['1', '1']);
+    else await playerPage.getByText(/1–1/).first().waitFor();
+    await page.getByRole('button', { name: 'Generate next round', exact: true }).click();
+    await page.getByText('Round 2 / 2', { exact: true }).waitFor();
+    const [{ swiss: advancedSwiss }] = await db`SELECT swiss FROM tournament_events WHERE id = ${swissId}`;
+    assert.equal(advancedSwiss.rounds[0].matches[0].outcome, 'draw');
+    const roundSelector = page.getByLabel('Round', { exact: true });
+    await roundSelector.selectOption('1');
+    assert.deepEqual(await counters().allTextContents(), ['1', '1']);
+    await counters().nth(0).click();
+    await page.getByRole('button', { name: 'Save round correction', exact: true }).click();
+    await page.waitForFunction(() => { const button = document.querySelector('button[value="correct"]'); return button?.disabled && !button.closest('form').querySelector('.score-button')?.disabled; });
+    const [{ swiss: correctedSwiss }] = await db`SELECT swiss FROM tournament_events WHERE id = ${swissId}`;
+    assert.equal(correctedSwiss.rounds[0].matches[0].outcome, 'a');
+    assert.deepEqual(correctedSwiss.rounds[1], { ...advancedSwiss.rounds[1], correctedEarlierRounds: [1] });
+    await roundSelector.selectOption('2');
+    await page.getByText(/Pairings kept as played/).waitFor();
+    await playerPage.reload(); await ready(playerPage);
+    await playerPage.getByLabel('Round', { exact: true }).selectOption('1');
+    assert.equal(await playerPage.locator('.score-button').count(), 0);
+    await page.setViewportSize({ width: 320, height: 740 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    await page.evaluate(() => { document.activeElement?.blur(); window.scrollTo(0, 0); });
+    if (screenshots) await page.screenshot({ path: `${screenshots}/swiss-round-mobile.png`, fullPage: true });
+    await counters().nth(0).click(); await counters().nth(0).click();
+    await counters().nth(1).click();
+    await counters().nth(1).click();
+    assert.deepEqual(await counters().allTextContents(), ['1', '2']);
+    assert.equal(await scoreboard.locator('.score-player.reverse.winner').count(), 1);
+    await counters().nth(1).press('Enter');
+    assert.deepEqual(await counters().allTextContents(), ['1', '0']);
+    assert.equal(await scoreboard.locator('.winner').count(), 0);
+    await counters().nth(0).click(); await counters().nth(1).click();
+    assert.deepEqual(await counters().allTextContents(), ['2', '1']);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    if (screenshots) await page.screenshot({ path: `${screenshots}/swiss-bo3-mobile.png`, fullPage: true });
+    await page.getByRole('button', { name: 'Review final standings', exact: true }).click();
+    await page.getByRole('button', { name: 'Publish results', exact: true }).waitFor();
+    assert.equal(await page.getByRole('table', { name: 'Points preview', exact: true }).locator('tbody tr').count(), 3);
+    await page.getByRole('button', { name: 'Publish results', exact: true }).click();
+    await page.getByRole('table', { name: 'Results', exact: true }).waitFor();
+    await roundSelector.selectOption('1');
+    await counters().nth(0).click();
+    const correctionForm = page.locator('form[action="?/swiss"]');
+    await correctionForm.locator('[name="reason"]').fill('Corrected the reported result');
+    await page.getByRole('button', { name: 'Save round correction', exact: true }).click();
+    await page.waitForFunction(() => { const button = document.querySelector('button[value="correct"]'); return button?.disabled && !button.closest('form').querySelector('.score-button')?.disabled; });
+    const [publishedCorrection] = await db`SELECT status, swiss FROM tournament_events WHERE id = ${swissId}`;
+    assert.equal(publishedCorrection.status, 'published');
+    assert.equal(publishedCorrection.swiss.rounds[0].matches[0].outcome, 'b');
+    await page.getByRole('table', { name: 'Results', exact: true }).waitFor();
+    await page.evaluate(() => { document.activeElement?.blur(); window.scrollTo(0, 0); });
+    if (screenshots) await page.screenshot({ path: `${screenshots}/swiss-correction-mobile.png`, fullPage: true });
+    await playerPage.goto(swissURL); await ready(playerPage);
+    await playerPage.getByRole('table', { name: 'Results', exact: true }).waitFor();
+    assert.equal(await playerPage.locator('.score-button').count(), 0);
+    await page.getByRole('button', { name: 'Delete tournament', exact: true }).click();
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+    assert.equal(await page.getByRole('button', { name: 'Confirm deletion', exact: true }).count(), 0);
+    await page.getByRole('button', { name: 'Delete tournament', exact: true }).click();
+    await page.getByRole('button', { name: 'Confirm deletion', exact: true }).click();
+    await page.waitForURL(`/tournament/${leagueId}`);
+    assert.equal(await page.getByRole('link', { name: /Swiss evening/ }).count(), 0);
+    const deletedResponse = await adminContext.request.get(swissURL);
+    assert.equal(deletedResponse.status(), 404);
+    const [deleted] = await db`SELECT deleted_at FROM tournament_events WHERE id = ${swissId}`;
+    assert.ok(deleted.deleted_at);
     const anonymous = await browser.newContext({ baseURL });
     assert.equal((await anonymous.request.get('/tournament/commanders?q=Ellie')).status(), 401);
     for (const path of ['/tournament', `/tournament/${leagueId}`, new URL(eventURL).pathname]) {
@@ -194,6 +379,15 @@ test('admin and player tournament browser flow', { skip: !baseURL || !databaseUR
     }
     assert.deepEqual(errors, []);
   } finally {
+    if (screenshots) {
+      await mkdir(screenshots, { recursive: true });
+      const lastPage = browser.contexts()[0]?.pages()[0];
+      if (lastPage && !lastPage.isClosed()) {
+        await lastPage.screenshot({ path: `${screenshots}/last-admin-state.png`, fullPage: true });
+        await writeFile(`${screenshots}/last-admin-state.txt`, await lastPage.locator('body').innerText());
+      }
+    }
+    if (errors.length) console.error('Browser errors:', errors);
     await browser.close();
     if (leagueId) {
       await db`DELETE FROM tournament_event_history WHERE event_id IN (SELECT id FROM tournament_events WHERE league_id = ${leagueId})`;
