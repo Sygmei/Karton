@@ -1,4 +1,5 @@
 import { analyzeCards } from './analysis';
+import { addCardReleaseDates } from './card-releases';
 import { fetchInputDeckFromUrl } from '../adapters/deck-source';
 import { getDuelCommanderDeckBannedCardsNormalized } from '../adapters/duel-commander-banlist';
 import { MtgTop8Client, type CrawlProgressEvent } from '../adapters/mtgtop8';
@@ -20,9 +21,6 @@ interface AnalyzePipelineInput {
   requiredCards?: string[];
   startDate?: Date | null;
   endDate?: Date | null;
-  keepTop?: number;
-  cutTop?: number;
-  addTop?: number;
   refreshCache?: boolean;
   headless?: boolean;
   maxPages?: number;
@@ -47,9 +45,6 @@ export async function analyzeDeck(input: AnalyzePipelineInput): Promise<AnalyzeO
     'analysis.pipeline',
     {
       'analysis.deck_url': input.deckUrl ?? '',
-      'analysis.keep_top': input.keepTop ?? 50,
-      'analysis.cut_top': input.cutTop ?? 50,
-      'analysis.add_top': input.addTop ?? 50
     },
     async (pipelineSpan) => {
       const headless = input.headless ?? true;
@@ -175,11 +170,12 @@ export async function analyzeDeck(input: AnalyzePipelineInput): Promise<AnalyzeO
             startDate: input.startDate,
             endDate: input.endDate,
             requiredCards: input.requiredCards,
-            keepTop: input.keepTop,
-            cutTop: input.cutTop,
-            addTop: input.addTop,
             bannedCardsNormalized
           })
+      );
+
+      analysis.newCards = await withSpan('analysis.card_releases', {}, () =>
+        addCardReleaseDates(analysis.newCards ?? [])
       );
 
       input.onProgress?.({
@@ -209,9 +205,6 @@ export async function analyzeFromMoxfieldUrl(input: {
   requiredCards?: string[];
   startDate?: Date | null;
   endDate?: Date | null;
-  keepTop?: number;
-  cutTop?: number;
-  addTop?: number;
   refreshCache?: boolean;
   headless?: boolean;
   maxPages?: number;
@@ -224,9 +217,6 @@ export async function analyzeFromMoxfieldUrl(input: {
     requiredCards: input.requiredCards,
     startDate: input.startDate,
     endDate: input.endDate,
-    keepTop: input.keepTop,
-    cutTop: input.cutTop,
-    addTop: input.addTop,
     refreshCache: input.refreshCache,
     headless: input.headless,
     maxPages: input.maxPages,

@@ -12,9 +12,6 @@ interface AnalysisInputSnapshot {
   requiredCards?: string;
   startDate: string;
   endDate: string;
-  keepTop: string;
-  cutTop: string;
-  addTop: string;
 }
 
 interface SaveAnalysisRunInput {

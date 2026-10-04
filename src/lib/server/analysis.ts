@@ -5,9 +5,6 @@ interface AnalyzeOptions {
   startDate?: Date | null;
   endDate?: Date | null;
   requiredCards?: string[];
-  keepTop?: number;
-  cutTop?: number;
-  addTop?: number;
   bannedCardsNormalized?: Set<string>;
 }
 
@@ -16,9 +13,6 @@ export function analyzeCards(
   cachedDecks: DeckRecord[],
   options: AnalyzeOptions = {}
 ): AnalysisResult {
-  const keepTop = options.keepTop ?? 50;
-  const cutTop = options.cutTop ?? 50;
-  const addTop = options.addTop ?? 50;
   const bannedCards = options.bannedCardsNormalized || new Set<string>();
   const requiredCards = [...new Map((options.requiredCards ?? [])
     .map((card) => card.trim()).filter(Boolean)
@@ -115,10 +109,9 @@ export function analyzeCards(
   };
 
   const allStats = [...keepCutStats].sort(byDesc);
-  const keep = allStats.slice(0, keepTop);
-  const cut = [...keepCutStats].sort(byAsc).slice(0, cutTop);
-  const sortedAddStats = [...toAddStats].sort(byDesc);
-  const toAdd = moxfieldDeck.source === 'commander' ? sortedAddStats : sortedAddStats.slice(0, addTop);
+  const keep = allStats;
+  const cut = [...keepCutStats].sort(byAsc);
+  const toAdd = [...toAddStats].sort(byDesc);
 
   return reconcileAnalysisCardNames({
     startDate: options.startDate ? formatDate(options.startDate) : null,
@@ -128,6 +121,7 @@ export function analyzeCards(
     keep: requiredCards.length && !totalDecks ? [] : keep,
     cut: requiredCards.length && !totalDecks ? [] : cut,
     toAdd,
+    newCards: tournamentCardStats(filteredDecks, commanderNormSet, bannedCards),
     allStats: requiredCards.length && !totalDecks ? [] : allStats
   });
 }
@@ -213,13 +207,13 @@ export function reconcileAnalysisCardNames(analysis: AnalysisResult): AnalysisRe
   };
 
   const allStats = [...allStatsByNormalizedName.values()].sort(byDesc);
-  const toAdd = [...additionsByNormalizedName.values()].sort(byDesc).slice(0, analysis.toAdd.length);
+  const toAdd = [...additionsByNormalizedName.values()].sort(byDesc);
 
   return {
     ...analysis,
     allStats,
-    keep: allStats.slice(0, analysis.keep.length),
-    cut: [...allStats].sort(byAsc).slice(0, analysis.cut.length),
+    keep: allStats,
+    cut: [...allStats].sort(byAsc),
     toAdd
   };
 }
@@ -230,12 +224,37 @@ function deckMainboardCardSet(
 ): Map<string, string> {
   const main = deck.sections.main;
   if (main && Object.keys(main).length) {
-    return cardNamesByNormalizedName(Object.keys(main));
+    return cardNamesByNormalizedName(Object.keys(main).filter((name) => main[name] > 0));
   }
 
   return cardNamesByNormalizedName(
-    Object.keys(deck.cards).filter((name) => !commanderNormSet.has(normalizeName(name)))
+    Object.keys(deck.cards).filter((name) => deck.cards[name] > 0 && !commanderNormSet.has(normalizeName(name)))
   );
+}
+
+function tournamentCardStats(
+  decks: DeckRecord[],
+  commanderNames: Set<string>,
+  bannedCards: Set<string>
+): CardStat[] {
+  const mainboards = decks.map((deck) => deckMainboardCardSet(deck, commanderNames));
+  const namesByAlias = new Map<string, string>();
+  // Register full multi-face names first so abbreviated names resolve to the same card.
+  const names = [...new Set(mainboards.flatMap((cards) => [...cards.values()]))]
+    .sort((a, b) => b.length - a.length || a.localeCompare(b));
+  for (const name of names) {
+    // MtgTop8 abbreviates multi-face cards to the front face. A back face can
+    // share a name with a separate card (for example Lightning Bolt).
+    for (const alias of [normalizeName(name), normalizeName(name.split(/\s*\/{1,2}\s*/)[0])]) {
+      if (!namesByAlias.has(alias)) namesByAlias.set(alias, name);
+    }
+  }
+  const counts = new Map<string, number>();
+  for (const mainboard of mainboards) {
+    const cards = new Set([...mainboard.keys()].map((name) => namesByAlias.get(name)!));
+    for (const card of cards) counts.set(card, (counts.get(card) ?? 0) + 1);
+  }
+  return [...counts].map(([card, count]) => buildCardStat(card, count, decks.length, bannedCards));
 }
 
 function cardNamesByNormalizedName(cardNames: string[]): Map<string, string> {

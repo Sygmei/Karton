@@ -1,7 +1,9 @@
 <script lang="ts">
   import type { CardStat } from '$lib/server/types';
+  import { t } from '$lib/i18n';
 
   export let cards: CardStat[] = [];
+  export let showReleaseDate = false;
 
   type PreviewStatus = 'hidden' | 'loading' | 'ready' | 'error';
   type VisiblePreviewStatus = Exclude<PreviewStatus, 'hidden'>;
@@ -153,13 +155,13 @@
         return;
       }
 
-      previewError = 'Preview unavailable on Scryfall for this card.';
+      previewError = $t('analyzer.previewUnavailable');
       previewStatus = 'error';
     } catch {
       if (sequence !== previewSequence || activeCard !== cardName) {
         return;
       }
-      previewError = 'Could not fetch preview from Scryfall.';
+      previewError = $t('analyzer.previewFailed');
       previewStatus = 'error';
     }
   }
@@ -278,13 +280,13 @@
         preview.id === id
           ? card
             ? { ...preview, status: 'ready', card }
-            : { ...preview, status: 'error', error: 'Preview unavailable on Scryfall for this card.' }
+            : { ...preview, status: 'error', error: $t('analyzer.previewUnavailable') }
           : preview
       );
     } catch {
       floatingPreviews = floatingPreviews.map((preview) =>
         preview.id === id
-          ? { ...preview, status: 'error', error: 'Could not fetch preview from Scryfall.' }
+          ? { ...preview, status: 'error', error: $t('analyzer.previewFailed') }
           : preview
       );
     }
@@ -360,15 +362,18 @@
 </script>
 
 {#if cards.length === 0}
-  <p class="text-sm text-stone-400">No cards found for this section in the selected date range.</p>
+  <p class="text-sm text-stone-400">{$t('analyzer.noCards')}</p>
 {:else}
   <div class={tableWrapClass}>
-    <table class="w-full table-fixed border-collapse text-sm">
+    <table class="w-full table-fixed border-collapse text-sm" class:min-w-[560px]={showReleaseDate}>
       <thead class="bg-stone-900 text-xs uppercase tracking-wider text-stone-400">
         <tr>
-          <th class={cellClass}>Card</th>
-          <th class={numericCellClass}>Decks</th>
-          <th class={`${cellClass} w-24 whitespace-nowrap`}>Ratio</th>
+          <th class={cellClass}>{$t('analyzer.card')}</th>
+          {#if showReleaseDate}
+            <th class={`${cellClass} w-32 whitespace-nowrap`} aria-sort="descending">{$t('analyzer.released')}</th>
+          {/if}
+          <th class={numericCellClass}>{$t('analyzer.decks')}</th>
+          <th class={`${cellClass} w-24 whitespace-nowrap`}>{$t('analyzer.ratio')}</th>
         </tr>
       </thead>
       <tbody>
@@ -391,14 +396,22 @@
                 {#if row.banned}
                   <span
                     class="grid size-5 shrink-0 place-items-center rounded bg-red-300 text-xs text-stone-950"
-                    title="Banned in Duel Commander"
-                    aria-label="Banned in Duel Commander"
+                    title={$t('analyzer.banned')}
+                    aria-label={$t('analyzer.banned')}
                   >
                     ⚠
                   </span>
                 {/if}
               </span>
+              {#if showReleaseDate && row.setName}
+                <span class="mt-1 block truncate text-xs text-stone-400" title={row.setName}>{row.setName}</span>
+              {/if}
             </td>
+            {#if showReleaseDate}
+              <td class={`${cellClass} w-32 whitespace-nowrap text-stone-300`}>
+                {#if row.releasedAt}<time datetime={row.releasedAt}>{row.releasedAt}</time>{:else}—{/if}
+              </td>
+            {/if}
             <td class={numericCellClass}>{row.decksWithCard} / {row.totalDecks}</td>
             <td class={`${cellClass} w-24 whitespace-nowrap text-stone-300`}>{toPercent(row.ratio)}</td>
           </tr>
@@ -416,11 +429,11 @@
     aria-busy={previewStatus === 'loading'}
   >
     {#if previewStatus === 'loading'}
-      <p class="text-sm text-stone-400">Loading preview...</p>
+      <p class="text-sm text-stone-400">{$t('analyzer.previewLoading')}</p>
     {:else if previewStatus === 'error'}
       <p class="text-sm text-red-200">{previewError}</p>
     {:else if previewCard}
-      <img class="card-image block w-full" src={previewCard.imageUrl} alt={`Scryfall preview for ${previewCard.name}`} />
+      <img class="card-image block w-full" src={previewCard.imageUrl} alt={$t('analyzer.previewFor', { card: previewCard.name })} />
     {/if}
   </aside>
 {/if}
@@ -431,7 +444,7 @@
       style={`left: ${floating.left}px; top: ${floating.top}px; z-index: ${floating.zIndex};`}
       role="dialog"
       tabindex="-1"
-      aria-label={`Scryfall preview for ${floating.cardName}`}
+      aria-label={$t('analyzer.previewFor', { card: floating.cardName })}
       aria-live="polite"
       aria-busy={floating.status === 'loading'}
       on:mousedown={() => bringPreviewToFront(floating.id)}
@@ -446,7 +459,7 @@
       >
         <div class="flex min-w-0 items-center gap-2">
           <svg class="size-4 shrink-0 text-stone-500" viewBox="0 0 16 16" aria-hidden="true">
-            <title>Drag to move</title>
+            <title>{$t('analyzer.dragToMove')}</title>
             <circle cx="5" cy="3" r="1.25" fill="currentColor" />
             <circle cx="11" cy="3" r="1.25" fill="currentColor" />
             <circle cx="5" cy="8" r="1.25" fill="currentColor" />
@@ -471,19 +484,19 @@
           type="button"
           on:pointerdown={(event) => event.stopPropagation()}
           on:click={() => closeFloatingPreview(floating.id)}
-          aria-label={`Close preview for ${floating.cardName}`}
-          title="Close preview"
+          aria-label={$t('analyzer.previewCloseCard', { card: floating.cardName })}
+          title={$t('analyzer.previewClose')}
         >
           &times;
         </button>
       </div>
 
       {#if floating.status === 'loading'}
-        <p class="text-sm text-stone-400">Loading Scryfall preview for <strong>{floating.cardName}</strong>...</p>
+        <p class="text-sm text-stone-400">{$t('analyzer.previewLoadingCard', { card: floating.cardName })}</p>
       {:else if floating.status === 'error'}
         <p class="text-sm text-red-200">{floating.error}</p>
       {:else if floating.card}
-        <img class="card-image mx-auto block h-auto min-w-0 max-h-[65vh] w-full max-w-full object-contain" src={floating.card.imageUrl} alt={`Scryfall preview for ${floating.card.name}`} />
+        <img class="card-image mx-auto block h-auto min-w-0 max-h-[65vh] w-full max-w-full object-contain" src={floating.card.imageUrl} alt={$t('analyzer.previewFor', { card: floating.card.name })} />
       {/if}
     </div>
 {/each}

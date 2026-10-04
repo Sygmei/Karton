@@ -87,6 +87,8 @@ export interface CardStat {
   totalDecks: number;
   ratio: number;
   banned?: boolean;
+  releasedAt?: string | null;
+  setName?: string | null;
 }
 
 export interface AnalysisResult {
@@ -98,6 +100,8 @@ export interface AnalysisResult {
   cut: CardStat[];
   toAdd: CardStat[];
   allStats: CardStat[];
+  // Optional for analyses saved before the release-date panel was introduced.
+  newCards?: CardStat[];
 }
 
 export interface CachedCommanderInfo {

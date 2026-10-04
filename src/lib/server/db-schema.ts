@@ -65,9 +65,6 @@ export const analysisRuns = pgTable(
         requiredCards?: string;
         inputMode?: string;
         commanderNames?: string;
-        keepTop: string;
-        cutTop: string;
-        addTop: string;
       }>()
       .notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()

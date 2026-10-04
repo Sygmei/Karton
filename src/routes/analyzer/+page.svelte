@@ -7,10 +7,11 @@
 
   import RequiredCardsPicker from "$lib/components/RequiredCardsPicker.svelte";
   import TournamentCommanderPicker from "$lib/components/TournamentCommanderPicker.svelte";
-  import CardTable from "$lib/components/CardTable.svelte";
+  import AnalysisPanels from "$lib/components/AnalysisPanels.svelte";
   import PageHeader from "$lib/components/PageHeader.svelte";
   import { currentUser } from "$lib/current-user";
-  import { t } from "$lib/i18n";
+  import { t, locale } from "$lib/i18n";
+  import { translateAnalyzerMessage } from "$lib/analyzer-messages";
   import type { AnalysisResult } from "$lib/server/types";
 
   type PreviousAnalysis = {
@@ -33,9 +34,6 @@
           startDate: string;
           endDate: string;
           requiredCards: string;
-          keepTop: string;
-          cutTop: string;
-          addTop: string;
         };
         output?: {
           analyzedAt: string;
@@ -73,9 +71,6 @@
     startDate: string;
     endDate: string;
     requiredCards: string;
-    keepTop: string;
-    cutTop: string;
-    addTop: string;
   } = {
     inputMode: "deck",
     commanderNames: "",
@@ -83,14 +78,9 @@
     startDate: "",
     endDate: "",
     requiredCards: "",
-    keepTop: "50",
-    cutTop: "50",
-    addTop: "50"
   };
 
   let output = form?.output;
-  type AnalysisTab = "cut" | "add" | "keep";
-  let activeAnalysisTab: AnalysisTab = "cut";
 
   $: values = {
     inputMode: form?.values?.inputMode ?? "deck",
@@ -99,9 +89,6 @@
     startDate: form?.values?.startDate ?? "",
     endDate: form?.values?.endDate ?? "",
     requiredCards: form?.values?.requiredCards ?? "",
-    keepTop: form?.values?.keepTop ?? "50",
-    cutTop: form?.values?.cutTop ?? "50",
-    addTop: form?.values?.addTop ?? "50"
   };
 
   $: output = form?.output;
@@ -581,11 +568,11 @@
   }
 
   function compactStageLabel(stage: ProgressStageItem): string {
-    if (stage.key === "queued") return "Queued";
-    if (stage.key === "moxfield") return "Decklist";
-    if (stage.key === "commander") return "Commander";
+    if (stage.key === "queued") return $t('analyzer.stageQueued');
+    if (stage.key === "moxfield") return $t('analyzer.stageDecklist');
+    if (stage.key === "commander") return $t('analyzer.commander');
     if (stage.key === "mtgtop8") return "MtgTop8";
-    return "Analysis";
+    return $t('analyzer.stageAnalysis');
   }
 
   function metroPillClass(stage: ProgressStageKey): string {
@@ -594,16 +581,6 @@
       return "grid min-w-10 place-items-center rounded bg-primary-300 px-3 py-1.5 text-xs font-black text-stone-950";
     }
     return "grid min-w-10 place-items-center rounded border border-white/15 px-3 py-1.5 text-xs font-bold text-stone-400";
-  }
-
-  function analysisTabClass(tab: AnalysisTab): string {
-    return `select-none rounded px-3 py-2 font-bold ${activeAnalysisTab === tab ? "bg-primary-300 text-stone-950" : "text-stone-300 hover:bg-stone-800"}`;
-  }
-
-  function activateAnalysisTabOnPointerDown(event: PointerEvent, tab: AnalysisTab): void {
-    if (event.button === 0) {
-      activeAnalysisTab = tab;
-    }
   }
 
   function deckSourceLabel(source: string | undefined): string {
@@ -727,17 +704,17 @@
   {#if isSubmitting}
     <section class="sticky top-24 z-40 rounded border border-primary-200/30 bg-stone-950/95 p-4 shadow-2xl" aria-live="polite" aria-busy="true">
       <div class="flex items-center justify-between gap-4">
-        <p class="font-bold">Analyzing Deck ({progressStageLabel})</p>
+        <p class="font-bold">{$t('analyzer.progressTitle', { stage: translateAnalyzerMessage(progressStageLabel, $locale) })}</p>
         <span class="text-sm font-black text-primary-300">{Math.round(progress)}%</span>
       </div>
       <div class="mt-3 h-2 overflow-hidden rounded bg-stone-800">
         <div class="h-full rounded bg-primary-300 transition-[width]" style={`width:${progress}%`}></div>
       </div>
-      <p class="mt-2 text-sm text-stone-400">{progressMessage}</p>
+      <p class="mt-2 text-sm text-stone-400">{translateAnalyzerMessage(progressMessage, $locale)}</p>
       <div class="mt-3 flex flex-wrap gap-2" aria-hidden="true">
         {#each displayedProgressStages as step, idx (step.key)}
           <div>
-            <span class={metroPillClass(step.key)} title={step.label} aria-label={step.label}>
+            <span class={metroPillClass(step.key)} title={translateAnalyzerMessage(step.label, $locale)} aria-label={translateAnalyzerMessage(step.label, $locale)}>
               <span>{idx + 1}. {compactStageLabel(step)}</span>
             </span>
           </div>
@@ -813,53 +790,16 @@
         </div>
       </details>
 
-      {#if false}
-        <div class="grid gap-3 md:grid-cols-3">
-          <label class={fieldClass}>
-            <span class={labelTextClass}>Keep top</span>
-            <input
-              class={inputClass}
-              name="keepTop"
-              type="number"
-              min="1"
-              step="1"
-              value={values.keepTop}
-            />
-          </label>
-
-          <label class={fieldClass}>
-            <span class={labelTextClass}>Cut top</span>
-            <input
-              class={inputClass}
-              name="cutTop"
-              type="number"
-              min="1"
-              step="1"
-              value={values.cutTop}
-            />
-          </label>
-
-          <label class={fieldClass}>
-            <span class={labelTextClass}>Add top</span>
-            <input
-              class={inputClass}
-              name="addTop"
-              type="number"
-              min="1"
-              step="1"
-              value={values.addTop}
-            />
-          </label>
-        </div>
-      {/if}
-
     </form>
 
     {#if form?.error}
-      <p role="alert" class="rounded border border-red-300/20 bg-red-950/30 p-3 text-red-200">{form.error}</p>
+      <p role="alert" class="rounded border border-red-300/20 bg-red-950/30 p-3 text-red-200">{translateAnalyzerMessage(form.error, $locale)}</p>
+    {/if}
+    {#if form?.traceId && !form?.error}
+      <p role="alert" class="text-sm text-red-200">{$t('analyzer.failed')}</p>
     {/if}
     {#if form?.traceId}
-      <p class="text-sm text-stone-400">Trace ID: <code class="rounded bg-stone-950 px-2 py-1 text-primary-300">{form.traceId}</code></p>
+      <p class="text-sm text-stone-400">{$t('analyzer.traceId')}: <code class="rounded bg-stone-950 px-2 py-1 text-primary-300">{form.traceId}</code></p>
     {/if}
   </section>
 
@@ -887,12 +827,12 @@
           <div class="grid gap-2">
             {#each previousAnalyses as analysis}
               <a class="grid gap-1 rounded border border-white/10 bg-stone-950/60 p-3 text-stone-100 no-underline hover:border-primary-300/50" href={`/analysis/${analysis.shareId}`}>
-                <strong>{analysis.commanderName || "Deck analysis"}</strong>
+                <strong>{analysis.commanderName || $t('analyzer.deckAnalysis')}</strong>
                 <span class="truncate text-sm text-stone-400">{analysis.moxfieldUrl || $t("analyzer.commanderMode")}</span>
                 <small class="text-stone-500">
-                  {new Date(analysis.createdAt).toLocaleString()}
+                  {new Date(analysis.createdAt).toLocaleString($locale)}
                   {#if analysis.ignoreBefore || analysis.ignoreAfter}
-                    - {analysis.ignoreBefore || "start"} to {analysis.ignoreAfter || "now"}
+                    - {$t('analyzer.dateRange', { start: analysis.ignoreBefore || $t('analyzer.rangeStart'), end: analysis.ignoreAfter || $t('analyzer.rangeNow') })}
                   {/if}
                 </small>
               </a>
@@ -918,23 +858,23 @@
     {/if}
     <section class={`${panelClass} grid gap-4`}>
       <div class="flex flex-wrap items-start justify-between gap-3">
-        <h2 class="text-xl font-bold">Deck Snapshot</h2>
+        <h2 class="text-xl font-bold">{$t('analyzer.snapshot')}</h2>
         <span class="rounded bg-stone-950 px-3 py-1 text-sm text-stone-300"
-          >Analyzed {new Date(output.analyzedAt).toLocaleString()}</span
+          >{$t('analyzer.analyzedAt', { date: new Date(output.analyzedAt).toLocaleString($locale) })}</span
         >
       </div>
 
       <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         <article class="rounded border border-white/10 bg-stone-950/60 p-4">
-          <p class={statLabelClass}>Deck</p>
+          <p class={statLabelClass}>{$t('analyzer.deck')}</p>
           <p class={statValueClass}>{output.moxfieldDeck.name}</p>
           <p class="mt-1 text-sm text-stone-400">{output.moxfieldDeck.source === "commander" ? $t("analyzer.commanderMode") : `${deckSourceLabel(output.moxfieldDeck.source)} - ${output.moxfieldDeck.deckId}`}</p>
         </article>
         <article class="rounded border border-white/10 bg-stone-950/60 p-4">
-          <p class={statLabelClass}>Commander</p>
+          <p class={statLabelClass}>{$t('analyzer.commander')}</p>
           <p class={statValueClass}>{output.moxfieldDeck.commanders.join(" / ")}</p>
           <p class="mt-1 text-sm text-stone-400">
-            MtgTop8 match:
+            {$t('analyzer.mtgtop8Match')}:
             <a class="text-primary-300 no-underline hover:underline" href={output.commander.url} target="_blank" rel="noreferrer"
               >{output.commander.name}</a
             >
@@ -942,32 +882,31 @@
           </p>
         </article>
         <article class="rounded border border-white/10 bg-stone-950/60 p-4">
-          <p class={statLabelClass}>Decks considered</p>
+          <p class={statLabelClass}>{$t('analyzer.decksConsidered')}</p>
           <p class={statValueClass}>{output.analysis.totalDecksConsidered}</p>
           <p class="mt-1 text-sm text-stone-400">
-            Latest cache date: {output.cache.latestCachedEventDate ?? "none"}
+            {$t('analyzer.latestCacheDate', { date: output.cache.latestCachedEventDate ?? $t('analyzer.none') })}
           </p>
         </article>
         <article class="rounded border border-white/10 bg-stone-950/60 p-4">
-          <p class={statLabelClass}>Ignore Filters</p>
-          <p class={statValueClass}>Before: {output.analysis.startDate ?? "none"}</p>
-          <p class="mt-1 text-sm text-stone-400">After: {output.analysis.endDate ?? "none"}</p>
+          <p class={statLabelClass}>{$t('analyzer.filters')}</p>
+          <p class={statValueClass}>{$t('analyzer.before', { date: output.analysis.startDate ?? $t('analyzer.none') })}</p>
+          <p class="mt-1 text-sm text-stone-400">{$t('analyzer.after', { date: output.analysis.endDate ?? $t('analyzer.none') })}</p>
         </article>
         <article class="rounded border border-white/10 bg-stone-950/60 p-4">
-          <p class={statLabelClass}>Cache updates</p>
+          <p class={statLabelClass}>{$t('analyzer.cacheUpdates')}</p>
           <p class={statValueClass}>+{output.cache.insertedDeckRows}</p>
           <p class="mt-1 text-sm text-stone-400">
-            fetched {output.cache.fetchedDeckRows}, total stored {output.cache
-              .totalCachedDeckRows}
+            {$t('analyzer.cacheCounts', { fetched: output.cache.fetchedDeckRows, total: output.cache.totalCachedDeckRows })}
           </p>
         </article>
         {#if output.share}
           <article class="rounded border border-white/10 bg-stone-950/60 p-4">
-            <p class={statLabelClass}>Share</p>
+            <p class={statLabelClass}>{$t('analyzer.share')}</p>
             <p class={statValueClass}><a class="text-primary-300 no-underline hover:underline" href={output.share.url}>{output.share.id}</a></p>
             <p class="mt-1 text-sm text-stone-400">
               <a class="text-primary-300 no-underline hover:underline" href={output.share.url} target="_blank" rel="noreferrer"
-                >Open permalink</a
+                >{$t('analyzer.openPermalink')}</a
               >
             </p>
           </article>
@@ -976,60 +915,7 @@
     </section>
 
     <section class={`${panelClass} grid gap-4`}>
-    {#if output.moxfieldDeck.source === 'commander'}
-      <h2 class="text-xl font-bold">{$t('analyzer.popularCards')}</h2>
-      <CardTable cards={output.analysis.toAdd} />
-    {:else}
-      <div class="grid grid-cols-3 rounded border border-white/10 bg-stone-950 p-1" role="tablist" aria-label="Analysis views">
-        <button
-          class={analysisTabClass("cut")}
-          type="button"
-          role="tab"
-          aria-selected={activeAnalysisTab === "cut"}
-          on:pointerdown={(event) => activateAnalysisTabOnPointerDown(event, "cut")}
-          on:click={() => (activeAnalysisTab = "cut")}
-        >
-          <span class="ui-action"><Icon name="minus" />Cut</span>
-        </button>
-        <button
-          class={analysisTabClass("add")}
-          type="button"
-          role="tab"
-          aria-selected={activeAnalysisTab === "add"}
-          on:pointerdown={(event) => activateAnalysisTabOnPointerDown(event, "add")}
-          on:click={() => (activeAnalysisTab = "add")}
-        >
-          <span class="ui-action"><Icon name="plus" />Add</span>
-        </button>
-        <button
-          class={analysisTabClass("keep")}
-          type="button"
-          role="tab"
-          aria-selected={activeAnalysisTab === "keep"}
-          on:pointerdown={(event) => activateAnalysisTabOnPointerDown(event, "keep")}
-          on:click={() => (activeAnalysisTab = "keep")}
-        >
-          <span class="ui-action"><Icon name="check" />Keep</span>
-        </button>
-      </div>
-
-      {#if activeAnalysisTab === "cut"}
-        <article class="grid gap-3">
-          <h2 class="text-xl font-bold">Cards To Cut</h2>
-          <CardTable cards={output.analysis.cut} />
-        </article>
-      {:else if activeAnalysisTab === "add"}
-        <article class="grid gap-3">
-          <h2 class="text-xl font-bold">Cards To Add</h2>
-          <CardTable cards={output.analysis.toAdd} />
-        </article>
-      {:else}
-        <article class="grid gap-3">
-          <h2 class="text-xl font-bold">Cards To Keep</h2>
-          <CardTable cards={output.analysis.keep} />
-        </article>
-      {/if}
-    {/if}
+      <AnalysisPanels analysis={output.analysis} commanderOnly={output.moxfieldDeck.source === 'commander'} />
     </section>
   {/if}
 </main>

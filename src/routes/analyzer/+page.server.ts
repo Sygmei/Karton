@@ -17,9 +17,6 @@ const DEFAULT_VALUES = {
   startDate: '',
   endDate: '',
   requiredCards: '',
-  keepTop: '50',
-  cutTop: '50',
-  addTop: '50'
 };
 
 export const actions: Actions = {
@@ -36,9 +33,6 @@ export const actions: Actions = {
       startDate: String(formData.get('startDate') || '').trim(),
       endDate: String(formData.get('endDate') || '').trim(),
       requiredCards: String(formData.get('requiredCards') || '').trim(),
-      keepTop: String(formData.get('keepTop') || DEFAULT_VALUES.keepTop).trim(),
-      cutTop: String(formData.get('cutTop') || DEFAULT_VALUES.cutTop).trim(),
-      addTop: String(formData.get('addTop') || DEFAULT_VALUES.addTop).trim()
     };
     const progressId = String(formData.get('progressId') || '').trim();
     if (progressId) {
@@ -83,21 +77,6 @@ export const actions: Actions = {
         });
       }
 
-    }
-
-    const keepTop = parsePositiveInt(values.keepTop, 'keepTop');
-    const cutTop = parsePositiveInt(values.cutTop, 'cutTop');
-    const addTop = parsePositiveInt(values.addTop, 'addTop');
-
-    if (typeof keepTop === 'string' || typeof cutTop === 'string' || typeof addTop === 'string') {
-      if (progressId) {
-        await failProgress(progressId, [keepTop, cutTop, addTop].find((item) => typeof item === 'string') || 'Invalid options');
-      }
-      return fail(400, {
-        error: [keepTop, cutTop, addTop].find((item) => typeof item === 'string'),
-        traceId: requestTraceId || undefined,
-        values: { ...DEFAULT_VALUES, ...values }
-      });
     }
 
     const startDate = values.startDate ? parseDate(values.startDate) : null;
@@ -156,9 +135,6 @@ export const actions: Actions = {
             startDate,
             endDate,
             requiredCards: values.requiredCards.split(/\r?\n/).map((card) => card.trim()).filter(Boolean),
-            keepTop,
-            cutTop,
-            addTop,
             refreshCache: false,
             headless: true,
             onProgress: progressId
@@ -205,9 +181,6 @@ export const actions: Actions = {
             startDate: values.startDate,
             endDate: values.endDate,
             requiredCards: values.requiredCards,
-            keepTop: values.keepTop,
-            cutTop: values.cutTop,
-            addTop: values.addTop
           }
         })
       );
@@ -263,14 +236,6 @@ export const actions: Actions = {
     }
   }
 };
-
-function parsePositiveInt(raw: string, fieldName: string): number | string {
-  const value = Number(raw);
-  if (!Number.isFinite(value) || value <= 0 || !Number.isInteger(value)) {
-    return `${fieldName} must be a positive integer`;
-  }
-  return value;
-}
 
 function normalizeTraceId(value: string | null | undefined): string | null {
   const candidate = String(value || '').trim();
